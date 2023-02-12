@@ -16,6 +16,10 @@
                         <span class="num text-danger">{{ $root.stats.down }}</span>
                     </div>
                     <div class="col">
+                        <h3>{{ $t("Maintenance") }}</h3>
+                        <span class="num text-maintenance">{{ $root.stats.maintenance }}</span>
+                    </div>
+                    <div class="col">
                         <h3>{{ $t("Unknown") }}</h3>
                         <span class="num text-secondary">{{ $root.stats.unknown }}</span>
                     </div>
@@ -118,6 +122,7 @@ export default {
                 return 0;
             });
 
+            // eslint-disable-next-line vue/no-side-effects-in-computed-properties
             this.heartBeatList = result;
 
             return result;

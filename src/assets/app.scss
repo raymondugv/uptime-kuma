@@ -22,6 +22,55 @@ textarea.form-control {
     width: 10px;
 }
 
+.bg-maintenance {
+    color: white !important;
+    background-color: $maintenance !important;
+}
+
+.bg-dark {
+    color: white;
+}
+
+.text-maintenance {
+    color: $maintenance !important;
+}
+
+.incident a,
+.bg-maintenance a {
+    color: inherit;
+}
+
+.list-group {
+    border-radius: 0.75rem;
+
+    .dark & {
+        .list-group-item {
+            background-color: $dark-bg;
+            color: $dark-font-color;
+            border-color: $dark-border-color;
+        }
+    }
+}
+
+
+// optgroup
+optgroup {
+    color: #b1b1b1;
+    option {
+        color: #212529;
+    }
+}
+
+.dark {
+    optgroup {
+        color: #535864;
+        option {
+            color: $dark-font-color;
+        }
+    }
+}
+
+// Scrollbar
 ::-webkit-scrollbar-thumb {
     background: #ccc;
     border-radius: 20px;
@@ -73,6 +122,19 @@ textarea.form-control {
 
     .dark & {
         color: $dark-font-color2;
+    }
+}
+
+.btn-normal {
+    $bg-color: #F5F5F5;
+
+    background-color: $bg-color;
+    border-color: $bg-color;
+
+    &:hover {
+        $hover-color: darken($bg-color, 3%);
+        background-color: $hover-color;
+        border-color: $hover-color;
     }
 }
 
@@ -191,6 +253,11 @@ textarea.form-control {
         }
     }
 
+    .incident a,
+    .bg-maintenance a {
+        color: inherit;
+    }
+
     .form-control,
     .form-control:focus,
     .form-select,
@@ -223,6 +290,20 @@ textarea.form-control {
 
     .btn-secondary {
         color: white;
+    }
+
+    .btn-normal {
+        $bg-color: $dark-header-bg;
+
+        color: $dark-font-color;
+        background-color: $bg-color;
+        border-color: $bg-color;
+
+        &:hover {
+            $hover-color: darken($bg-color, 3%);
+            background-color: $hover-color;
+            border-color: $hover-color;
+        }
     }
 
     .btn-warning {
@@ -292,6 +373,7 @@ textarea.form-control {
         &.bg-info,
         &.bg-warning,
         &.bg-danger,
+        &.bg-maintenance,
         &.bg-light {
             color: $dark-font-color2;
         }
@@ -352,6 +434,12 @@ textarea.form-control {
         height: calc(100% - 65px);
     }
 
+    @media (max-width: 770px) {
+        &.scrollbar {
+            height: calc(100% - 40px);
+        }
+    }
+
     .item {
         display: block;
         text-decoration: none;
@@ -366,7 +454,6 @@ textarea.form-control {
         .info {
             white-space: nowrap;
             overflow: hidden;
-            text-overflow: ellipsis;
         }
 
         &:hover {
@@ -412,6 +499,10 @@ textarea.form-control {
     background-color: rgba(239, 239, 239, 0.7);
     border-radius: 8px;
 
+    &.no-bg {
+        background-color: transparent !important;
+    }
+
     &:focus {
         outline: 0 solid #eee;
         background-color: rgba(245, 245, 245, 0.9);
@@ -451,6 +542,18 @@ textarea.form-control {
 
 .spinner {
     color: $primary;
+}
+
+.prism-editor__textarea {
+    outline: none !important;
+}
+
+h5.settings-subheading::after {
+    content: "";
+    display: block;
+    width: 50%;
+    padding-top: 8px;
+    border-bottom: 1px solid $dark-border-color;
 }
 
 // Localization

@@ -7,6 +7,7 @@ exports.latestVersion = null;
 
 let interval;
 
+/** Start 48 hour check interval */
 exports.startInterval = () => {
     let check = async () => {
         try {
@@ -24,7 +25,7 @@ exports.startInterval = () => {
             let checkBeta = await setting("checkBeta");
 
             if (checkBeta && res.data.beta) {
-                if (compareVersions.compare(res.data.beta, res.data.beta, ">")) {
+                if (compareVersions.compare(res.data.beta, res.data.slow, ">")) {
                     exports.latestVersion = res.data.beta;
                     return;
                 }
@@ -42,6 +43,11 @@ exports.startInterval = () => {
     interval = setInterval(check, 3600 * 1000 * 48);
 };
 
+/**
+ * Enable the check update feature
+ * @param {boolean} value Should the check update feature be enabled?
+ * @returns {Promise<void>}
+ */
 exports.enableCheckUpdate = async (value) => {
     await setSetting("checkUpdate", value);
 

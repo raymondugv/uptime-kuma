@@ -2,49 +2,89 @@
     <div v-if="loadedTheme" class="container mt-3">
         <!-- Sidebar for edit mode -->
         <div v-if="enableEditMode" class="sidebar">
-            <div class="my-3">
-                <label for="slug" class="form-label">{{ $t("Slug") }}</label>
-                <div class="input-group">
-                    <span id="basic-addon3" class="input-group-text">/status/</span>
-                    <input id="slug" v-model="config.slug" type="text" class="form-control">
+            <div class="sidebar-body">
+                <div class="my-3">
+                    <label for="slug" class="form-label">{{ $t("Slug") }}</label>
+                    <div class="input-group">
+                        <span id="basic-addon3" class="input-group-text">/status/</span>
+                        <input id="slug" v-model="config.slug" type="text" class="form-control">
+                    </div>
                 </div>
-            </div>
 
-            <div class="my-3">
-                <label for="title" class="form-label">{{ $t("Title") }}</label>
-                <input id="title" v-model="config.title" type="text" class="form-control">
-            </div>
+                <div class="my-3">
+                    <label for="title" class="form-label">{{ $t("Title") }}</label>
+                    <input id="title" v-model="config.title" type="text" class="form-control">
+                </div>
 
-            <div class="my-3">
-                <label for="description" class="form-label">{{ $t("Description") }}</label>
-                <textarea id="description" v-model="config.description" class="form-control"></textarea>
-            </div>
+                <!-- Description -->
+                <div class="my-3">
+                    <label for="description" class="form-label">{{ $t("Description") }}</label>
+                    <textarea id="description" v-model="config.description" class="form-control"></textarea>
+                </div>
 
-            <div class="my-3 form-check form-switch">
-                <input id="switch-theme" v-model="config.theme" class="form-check-input" type="checkbox" true-value="dark" false-value="light">
-                <label class="form-check-label" for="switch-theme">{{ $t("Switch to Dark Theme") }}</label>
-            </div>
+                <!-- Footer Text -->
+                <div class="my-3">
+                    <label for="footer-text" class="form-label">{{ $t("Footer Text") }}</label>
+                    <textarea id="footer-text" v-model="config.footerText" class="form-control"></textarea>
+                    <div class="form-text">
+                        {{ $t("markdownSupported") }}
+                    </div>
+                </div>
 
-            <div class="my-3 form-check form-switch">
-                <input id="showTags" v-model="config.showTags" class="form-check-input" type="checkbox">
-                <label class="form-check-label" for="showTags">{{ $t("Show Tags") }}</label>
-            </div>
+                <div class="my-3 form-check form-switch">
+                    <input id="switch-theme" v-model="config.theme" class="form-check-input" type="checkbox" true-value="dark" false-value="light">
+                    <label class="form-check-label" for="switch-theme">{{ $t("Switch to Dark Theme") }}</label>
+                </div>
 
-            <div v-if="false" class="my-3">
-                <label for="password" class="form-label">{{ $t("Password") }} <sup>Coming Soon</sup></label>
-                <input id="password" v-model="config.password" disabled type="password" autocomplete="new-password" class="form-control">
-            </div>
+                <div class="my-3 form-check form-switch">
+                    <input id="showTags" v-model="config.showTags" class="form-check-input" type="checkbox">
+                    <label class="form-check-label" for="showTags">{{ $t("Show Tags") }}</label>
+                </div>
 
-            <div v-if="false" class="my-3">
-                <label for="cname" class="form-label">Domain Names <sup>Coming Soon</sup></label>
-                <textarea id="cname" v-model="config.domanNames" rows="3" disabled class="form-control" :placeholder="domainNamesPlaceholder"></textarea>
-            </div>
+                <!-- Show Powered By -->
+                <div class="my-3 form-check form-switch">
+                    <input id="show-powered-by" v-model="config.showPoweredBy" class="form-check-input" type="checkbox">
+                    <label class="form-check-label" for="show-powered-by">{{ $t("Show Powered By") }}</label>
+                </div>
 
-            <div class="danger-zone">
-                <button class="btn btn-danger me-2" @click="deleteDialog">
-                    <font-awesome-icon icon="trash" />
-                    {{ $t("Delete") }}
-                </button>
+                <div v-if="false" class="my-3">
+                    <label for="password" class="form-label">{{ $t("Password") }} <sup>{{ $t("Coming Soon") }}</sup></label>
+                    <input id="password" v-model="config.password" disabled type="password" autocomplete="new-password" class="form-control">
+                </div>
+
+                <!-- Domain Name List -->
+                <div class="my-3">
+                    <label class="form-label">
+                        {{ $t("Domain Names") }}
+                        <font-awesome-icon icon="plus-circle" class="btn-add-domain action text-primary" @click="addDomainField" />
+                    </label>
+
+                    <ul class="list-group domain-name-list">
+                        <li v-for="(domain, index) in config.domainNameList" :key="index" class="list-group-item">
+                            <input v-model="config.domainNameList[index]" type="text" class="no-bg domain-input" placeholder="example.com" />
+                            <font-awesome-icon icon="times" class="action remove ms-2 me-3 text-danger" @click="removeDomain(index)" />
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Google Analytics -->
+                <div class="my-3">
+                    <label for="googleAnalyticsTag" class="form-label">{{ $t("Google Analytics ID") }}</label>
+                    <input id="googleAnalyticsTag" v-model="config.googleAnalyticsId" type="text" class="form-control">
+                </div>
+
+                <!-- Custom CSS -->
+                <div class="my-3">
+                    <div class="mb-1">{{ $t("Custom CSS") }}</div>
+                    <prism-editor v-model="config.customCSS" class="css-editor" :highlight="highlighter" line-numbers></prism-editor>
+                </div>
+
+                <div class="danger-zone">
+                    <button class="btn btn-danger me-2" @click="deleteDialog">
+                        <font-awesome-icon icon="trash" />
+                        {{ $t("Delete") }}
+                    </button>
+                </div>
             </div>
 
             <!-- Sidebar Footer -->
@@ -55,7 +95,7 @@
                 </button>
 
                 <button class="btn btn-danger me-2" @click="discard">
-                    <font-awesome-icon icon="save" />
+                    <font-awesome-icon icon="undo" />
                     {{ $t("Discard") }}
                 </button>
             </div>
@@ -67,21 +107,22 @@
             <h1 class="mb-4 title-flex">
                 <!-- Logo -->
                 <span class="logo-wrapper" @click="showImageCropUploadMethod">
-                    <img :src="logoURL" alt class="logo me-2" :class="logoClass" @load="statusPageLogoLoaded" />
+                    <img :src="logoURL" alt class="logo me-2" :class="logoClass" />
                     <font-awesome-icon v-if="enableEditMode" class="icon-upload" icon="upload" />
                 </span>
 
                 <!-- Uploader -->
                 <!--    url="/api/status-page/upload-logo" -->
-                <ImageCropUpload v-model="showImageCropUpload"
-                                 field="img"
-                                 :width="128"
-                                 :height="128"
-                                 :langType="$i18n.locale"
-                                 img-format="png"
-                                 :noCircle="true"
-                                 :noSquare="false"
-                                 @crop-success="cropSuccess"
+                <ImageCropUpload
+                    v-model="showImageCropUpload"
+                    field="img"
+                    :width="128"
+                    :height="128"
+                    :langType="$i18n.locale"
+                    img-format="png"
+                    :noCircle="true"
+                    :noSquare="false"
+                    @crop-success="cropSuccess"
                 />
 
                 <!-- Title -->
@@ -116,11 +157,16 @@
                 <Editable v-model="incident.title" tag="h4" :contenteditable="editIncidentMode" :noNL="true" class="alert-heading" />
 
                 <strong v-if="editIncidentMode">{{ $t("Content") }}:</strong>
-                <Editable v-model="incident.content" tag="div" :contenteditable="editIncidentMode" class="content" />
+                <Editable v-if="editIncidentMode" v-model="incident.content" tag="div" :contenteditable="editIncidentMode" class="content" />
+                <div v-if="editIncidentMode" class="form-text">
+                    {{ $t("markdownSupported") }}
+                </div>
+                <!-- eslint-disable-next-line vue/no-v-html-->
+                <div v-if="! editIncidentMode" class="content" v-html="incidentHTML"></div>
 
                 <!-- Incident Date -->
                 <div class="date mt-3">
-                    {{ $t("Created") }}: {{ $root.datetime(incident.createdDate) }} ({{ dateFromNow(incident.createdDate) }})<br />
+                    {{ $t("Date Created") }}: {{ $root.datetime(incident.createdDate) }} ({{ dateFromNow(incident.createdDate) }})<br />
                     <span v-if="incident.lastUpdatedDate">
                         {{ $t("Last Updated") }}: {{ $root.datetime(incident.lastUpdatedDate) }} ({{ dateFromNow(incident.lastUpdatedDate) }})
                     </span>
@@ -186,11 +232,29 @@
                         {{ $t("Degraded Service") }}
                     </div>
 
+                    <div v-else-if="isMaintenance">
+                        <font-awesome-icon icon="wrench" class="status-maintenance" />
+                        {{ $t("maintenanceStatus-under-maintenance") }}
+                    </div>
+
                     <div v-else>
                         <font-awesome-icon icon="question-circle" style="color: #efefef;" />
                     </div>
                 </template>
             </div>
+
+            <!-- Maintenance -->
+            <template v-if="maintenanceList.length > 0">
+                <div
+                    v-for="maintenance in maintenanceList" :key="maintenance.id"
+                    class="shadow-box alert mb-4 p-3 bg-maintenance mt-4 position-relative" role="alert"
+                >
+                    <h4 class="alert-heading">{{ maintenance.title }}</h4>
+                    <!-- eslint-disable-next-line vue/no-v-html-->
+                    <div class="content" v-html="maintenanceHTML(maintenance.description)"></div>
+                    <MaintenanceTime :maintenance="maintenance" />
+                </div>
+            </template>
 
             <!-- Description -->
             <strong v-if="editMode">{{ $t("Description") }}:</strong>
@@ -227,31 +291,55 @@
             </div>
 
             <footer class="mt-5 mb-4">
-                {{ $t("Powered by") }} <a target="_blank" href="https://github.com/louislam/uptime-kuma">{{ $t("Uptime Kuma" ) }}</a>
+                <div class="custom-footer-text text-start">
+                    <strong v-if="enableEditMode">{{ $t("Custom Footer") }}:</strong>
+                </div>
+                <Editable v-if="enableEditMode" v-model="config.footerText" tag="div" :contenteditable="enableEditMode" :noNL="false" class="alert-heading p-2" />
+                <!-- eslint-disable-next-line vue/no-v-html-->
+                <div v-if="! enableEditMode" class="alert-heading p-2" v-html="footerHTML"></div>
+
+                <p v-if="config.showPoweredBy">
+                    {{ $t("Powered by") }} <a target="_blank" rel="noopener noreferrer" href="https://github.com/louislam/uptime-kuma">{{ $t("Uptime Kuma" ) }}</a>
+                </p>
             </footer>
         </div>
 
         <Confirm ref="confirmDelete" btn-style="btn-danger" :yes-text="$t('Yes')" :no-text="$t('No')" @yes="deleteStatusPage">
             {{ $t("deleteStatusPageMsg") }}
         </Confirm>
+
+        <component is="style" v-if="config.customCSS" type="text/css">
+            {{ config.customCSS }}
+        </component>
     </div>
 </template>
 
 <script>
 import axios from "axios";
-import PublicGroupList from "../components/PublicGroupList.vue";
-import ImageCropUpload from "vue-image-crop-upload";
-import { STATUS_PAGE_ALL_DOWN, STATUS_PAGE_ALL_UP, STATUS_PAGE_PARTIAL_DOWN, UP } from "../util.ts";
-import { useToast } from "vue-toastification";
 import dayjs from "dayjs";
 import Favico from "favico.js";
-import { getResBaseURL } from "../util-frontend";
+// import highlighting library (you can use any library you want just return html string)
+import { highlight, languages } from "prismjs/components/prism-core";
+import "prismjs/components/prism-css";
+import "prismjs/themes/prism-tomorrow.css"; // import syntax highlighting styles
+import ImageCropUpload from "vue-image-crop-upload";
+// import Prism Editor
+import { PrismEditor } from "vue-prism-editor";
+import "vue-prism-editor/dist/prismeditor.min.css"; // import the styles somewhere
+import { useToast } from "vue-toastification";
+import { marked } from "marked";
+import DOMPurify from "dompurify";
 import Confirm from "../components/Confirm.vue";
+import PublicGroupList from "../components/PublicGroupList.vue";
+import MaintenanceTime from "../components/MaintenanceTime.vue";
+import { getResBaseURL } from "../util-frontend";
+import { STATUS_PAGE_ALL_DOWN, STATUS_PAGE_ALL_UP, STATUS_PAGE_MAINTENANCE, STATUS_PAGE_PARTIAL_DOWN, UP, MAINTENANCE } from "../util.ts";
 
 const toast = useToast();
 
 const leavePageMsg = "Do you really want to leave? you have unsaved changes!";
 
+// eslint-disable-next-line no-unused-vars
 let feedInterval;
 
 const favicon = new Favico({
@@ -259,10 +347,13 @@ const favicon = new Favico({
 });
 
 export default {
+
     components: {
         PublicGroupList,
         ImageCropUpload,
         Confirm,
+        PrismEditor,
+        MaintenanceTime,
     },
 
     // Leave Page for vue route change
@@ -276,6 +367,15 @@ export default {
             }
         }
         next();
+    },
+
+    props: {
+        /** Override for the status page slug */
+        overrideSlug: {
+            type: String,
+            required: false,
+            default: null,
+        },
     },
 
     data() {
@@ -294,7 +394,7 @@ export default {
             loadedData: false,
             baseURL: "",
             clickedEditButton: false,
-            domainNamesPlaceholder: "domain1.com\ndomain2.com\n..."
+            maintenanceList: [],
         };
     },
     computed: {
@@ -348,6 +448,10 @@ export default {
             return "bg-" + this.incident.style;
         },
 
+        maintenanceClass() {
+            return "bg-maintenance";
+        },
+
         overallStatus() {
 
             if (Object.keys(this.$root.publicLastHeartbeatList).length === 0) {
@@ -360,7 +464,9 @@ export default {
             for (let id in this.$root.publicLastHeartbeatList) {
                 let beat = this.$root.publicLastHeartbeatList[id];
 
-                if (beat.status === UP) {
+                if (beat.status === MAINTENANCE) {
+                    return STATUS_PAGE_MAINTENANCE;
+                } else if (beat.status === UP) {
                     hasUp = true;
                 } else {
                     status = STATUS_PAGE_PARTIAL_DOWN;
@@ -386,8 +492,42 @@ export default {
             return this.overallStatus === STATUS_PAGE_ALL_DOWN;
         },
 
+        isMaintenance() {
+            return this.overallStatus === STATUS_PAGE_MAINTENANCE;
+        },
+
+        incidentHTML() {
+            return DOMPurify.sanitize(marked(this.incident.content));
+        },
+
+        footerHTML() {
+            return DOMPurify.sanitize(marked(this.config.footerText));
+        },
     },
     watch: {
+
+        /**
+         * If connected to the socket and logged in, request private data of this statusPage
+         * @param connected
+         */
+        "$root.loggedIn"(loggedIn) {
+            if (loggedIn) {
+                this.$root.getSocket().emit("getStatusPage", this.slug, (res) => {
+                    if (res.ok) {
+                        this.config = res.config;
+
+                        if (!this.config.customCSS) {
+                            this.config.customCSS = "body {\n" +
+                                "  \n" +
+                                "}\n";
+                        }
+
+                    } else {
+                        toast.error(res.msg);
+                    }
+                });
+            }
+        },
 
         /**
          * Selected a monitor and add to the list.
@@ -449,21 +589,31 @@ export default {
         this.baseURL = getResBaseURL();
     },
     async mounted() {
-        this.slug = this.$route.params.slug;
+        this.slug = this.overrideSlug || this.$route.params.slug;
 
         if (!this.slug) {
             this.slug = "default";
         }
 
-        axios.get("/api/status-page/" + this.slug).then((res) => {
+        this.getData().then((res) => {
             this.config = res.data.config;
+
+            if (!this.config.domainNameList) {
+                this.config.domainNameList = [];
+            }
 
             if (this.config.icon) {
                 this.imgDataUrl = this.config.icon;
             }
 
             this.incident = res.data.incident;
+            this.maintenanceList = res.data.maintenanceList;
             this.$root.publicGroupList = res.data.publicGroupList;
+        }).catch( function (error) {
+            if (error.response.status === 404) {
+                location.href = "/page-not-found";
+            }
+            console.log(error);
         });
 
         // 5mins a loop
@@ -480,6 +630,31 @@ export default {
     },
     methods: {
 
+        /**
+         * Get status page data
+         * It should be preloaded in window.preloadData
+         * @returns {Promise<any>}
+         */
+        getData: function () {
+            if (window.preloadData) {
+                return new Promise(resolve => resolve({
+                    data: window.preloadData
+                }));
+            } else {
+                return axios.get("/api/status-page/" + this.slug);
+            }
+        },
+
+        /**
+         * Provide syntax highlighting for CSS
+         * @param {string} code Text to highlight
+         * @returns {string}
+         */
+        highlighter(code) {
+            return highlight(code, languages.css);
+        },
+
+        /** Update the heartbeat list and update favicon if neccessary */
         updateHeartbeatList() {
             // If editMode, it will use the data from websocket.
             if (! this.editMode) {
@@ -508,14 +683,19 @@ export default {
             }
         },
 
+        /** Enable editing mode */
         edit() {
             if (this.hasToken) {
                 this.$root.initSocketIO(true);
                 this.enableEditMode = true;
                 this.clickedEditButton = true;
+
+                // Try to fix #1658
+                this.loadedData = true;
             }
         },
 
+        /** Save the status page */
         save() {
             let startTime = new Date();
             this.config.slug = this.config.slug.trim().toLowerCase();
@@ -543,10 +723,12 @@ export default {
             });
         },
 
+        /** Show dialog confirming deletion */
         deleteDialog() {
             this.$refs.confirmDelete.show();
         },
 
+        /** Request deletion of this status page */
         deleteStatusPage() {
             this.$root.getSocket().emit("deleteStatusPage", this.slug, (res) => {
                 if (res.ok) {
@@ -558,10 +740,16 @@ export default {
             });
         },
 
+        /**
+         * Returns label for a specifed monitor
+         * @param {Object} monitor Object representing monitor
+         * @returns {string}
+         */
         monitorSelectorLabel(monitor) {
             return `${monitor.name}`;
         },
 
+        /** Add a group to the status page */
         addGroup() {
             let groupName = this.$t("Untitled Group");
 
@@ -575,28 +763,32 @@ export default {
             });
         },
 
+        /** Add a domain to the status page */
+        addDomainField() {
+            this.config.domainNameList.push("");
+        },
+
+        /** Discard changes to status page */
         discard() {
             location.href = "/status/" + this.slug;
         },
 
         /**
-         * Crop Success
+         * Set URL of new image after successful crop operation
+         * @param {string} imgDataUrl URL of image in data:// format
          */
         cropSuccess(imgDataUrl) {
             this.imgDataUrl = imgDataUrl;
         },
 
+        /** Show image crop dialog if in edit mode */
         showImageCropUploadMethod() {
             if (this.editMode) {
                 this.showImageCropUpload = true;
             }
         },
 
-        statusPageLogoLoaded(eventPayload) {
-            // Remark: may not work in dev, due to cros
-            favicon.image(eventPayload.target);
-        },
-
+        /** Create an incident for this status page */
         createIncident() {
             this.enableEditIncidentMode = true;
 
@@ -611,8 +803,9 @@ export default {
             };
         },
 
+        /** Post the incident to the status page */
         postIncident() {
-            if (this.incident.title == "" || this.incident.content == "") {
+            if (this.incident.title === "" || this.incident.content === "") {
                 toast.error(this.$t("Please input title and content"));
                 return;
             }
@@ -630,14 +823,13 @@ export default {
 
         },
 
-        /**
-         * Click Edit Button
-         */
+        /** Click Edit Button */
         editIncident() {
             this.enableEditIncidentMode = true;
             this.previousIncident = Object.assign({}, this.incident);
         },
 
+        /** Cancel creation or editing of incident */
         cancelIncident() {
             this.enableEditIncidentMode = false;
 
@@ -647,14 +839,36 @@ export default {
             }
         },
 
+        /** Unpin the incident */
         unpinIncident() {
             this.$root.getSocket().emit("unpinIncident", this.slug, () => {
                 this.incident = null;
             });
         },
 
+        /**
+         * Get the relative time difference of a date from now
+         * @returns {string}
+         */
         dateFromNow(date) {
             return dayjs.utc(date).fromNow();
+        },
+
+        /**
+         * Remove a domain from the status page
+         * @param {number} index Index of domain to remove
+         */
+        removeDomain(index) {
+            this.config.domainNameList.splice(index, 1);
+        },
+
+        /**
+         * Generate sanitized HTML from maintenance description
+         * @param {string} description
+         * @returns {string} Sanitized HTML
+         */
+        maintenanceHTML(description) {
+            return DOMPurify.sanitize(marked(description));
         },
 
     }
@@ -705,9 +919,7 @@ h1 {
     top: 0;
     width: 300px;
     height: 100vh;
-    padding: 15px 15px 68px 15px;
-    overflow-x: hidden;
-    overflow-y: auto;
+
     border-right: 1px solid #ededed;
 
     .danger-zone {
@@ -715,13 +927,25 @@ h1 {
         padding-top: 15px;
     }
 
+    .sidebar-body {
+        padding: 0 10px 10px 10px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        height: calc(100% - 70px);
+    }
+
     .sidebar-footer {
-        width: 100%;
-        bottom: 0;
-        left: 0;
-        padding: 15px;
-        position: absolute;
         border-top: 1px solid #ededed;
+        border-right: 1px solid #ededed;
+        padding: 10px;
+        width: 300px;
+        height: 70px;
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        background-color: white;
+        display: flex;
+        align-items: center;
     }
 }
 
@@ -778,7 +1002,7 @@ footer {
 
 .incident {
     .content {
-        &[contenteditable=true] {
+        &[contenteditable="true"] {
             min-height: 60px;
         }
     }
@@ -786,6 +1010,24 @@ footer {
     .date {
         font-size: 12px;
     }
+}
+
+.maintenance-bg-info {
+    color: $maintenance;
+}
+
+.maintenance-icon {
+    font-size: 35px;
+    vertical-align: middle;
+}
+
+.dark .shadow-box {
+    background-color: #0d1117;
+}
+
+.status-maintenance {
+    color: $maintenance;
+    margin-right: 5px;
 }
 
 .mobile {
@@ -808,8 +1050,50 @@ footer {
         }
 
         .sidebar-footer {
+            border-right-color: $dark-border-color;
             border-top-color: $dark-border-color;
+            background-color: $dark-header-bg;
         }
+    }
+}
+
+.domain-name-list {
+    li {
+        display: flex;
+        align-items: center;
+        padding: 10px 0 10px 10px;
+
+        .domain-input {
+            flex-grow: 1;
+            background-color: transparent;
+            border: none;
+            color: $dark-font-color;
+            outline: none;
+
+            &::placeholder {
+                color: #1d2634;
+            }
+        }
+    }
+}
+
+/* required class */
+.css-editor {
+    /* we dont use `language-` classes anymore so thats why we need to add background and text color manually */
+
+    border-radius: 1rem;
+    padding: 10px 5px;
+    border: 1px solid #ced4da;
+
+    .dark & {
+        background: $dark-bg;
+        border: 1px solid $dark-border-color;
+    }
+}
+
+.bg-maintenance {
+    .alert-heading {
+        font-weight: bold;
     }
 }
 

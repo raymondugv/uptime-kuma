@@ -1,10 +1,19 @@
 <template>
     <div>
+        <div v-if="$root.isMobile" class="shadow-box mb-3">
+            <router-link to="/manage-status-page" class="nav-link">
+                <font-awesome-icon icon="stream" /> {{ $t("Status Pages") }}
+            </router-link>
+            <router-link to="/maintenance" class="nav-link">
+                <font-awesome-icon icon="wrench" /> {{ $t("Maintenance") }}
+            </router-link>
+        </div>
+
         <h1 v-show="show" class="mb-3">
             {{ $t("Settings") }}
         </h1>
 
-        <div class="shadow-box">
+        <div class="shadow-box shadow-box-settings">
             <div class="row">
                 <div v-if="showSubMenu" class="settings-menu col-lg-3 col-md-5">
                     <router-link
@@ -16,6 +25,14 @@
                             {{ item.title }}
                         </div>
                     </router-link>
+
+                    <!-- Logout Button -->
+                    <a v-if="$root.isMobile && $root.loggedIn && $root.socket.token !== 'autoLogin'" class="logout" @click.prevent="$root.logout">
+                        <div class="menu-item">
+                            <font-awesome-icon icon="sign-out-alt" />
+                            {{ $t("Logout") }}
+                        </div>
+                    </a>
                 </div>
                 <div class="settings-content col-lg-9 col-md-7">
                     <div v-if="currentPage" class="settings-content-header">
@@ -78,8 +95,14 @@ export default {
                 "reverse-proxy": {
                     title: this.$t("Reverse Proxy"),
                 },
+                tags: {
+                    title: this.$t("Tags"),
+                },
                 "monitor-history": {
                     title: this.$t("Monitor History"),
+                },
+                "docker-hosts": {
+                    title: this.$t("Docker Hosts"),
                 },
                 security: {
                     title: this.$t("Security"),
@@ -90,6 +113,12 @@ export default {
                 backup: {
                     title: this.$t("Backup"),
                 },
+                /*
+                Hidden for now: Unfortunately, after some test, I found that Playwright requires a lot of libraries to be installed on the Linux host in order to start Chrome or Firefox.
+                It will be hard to install, so I hide this feature for now. But it still accessible via URL: /settings/plugins.
+                plugins: {
+                    title: this.$tc("plugin", 2),
+                },*/
                 about: {
                     title: this.$t("About"),
                 },
@@ -110,13 +139,17 @@ export default {
 
     methods: {
 
-        // For desktop only, mobile do nothing
+        /**
+         * Load the general settings page
+         * For desktop only, on mobile do nothing
+         */
         loadGeneralPage() {
             if (!this.currentPage && !this.$root.isMobile) {
                 this.$router.push("/settings/general");
             }
         },
 
+        /** Load settings from server */
         loadSettings() {
             this.$root.getSocket().emit("getSettings", (res) => {
                 this.settings = res.data;
@@ -133,8 +166,20 @@ export default {
                     this.settings.entryPage = "dashboard";
                 }
 
+                if (this.settings.dnsCache === undefined) {
+                    this.settings.dnsCache = false;
+                }
+
                 if (this.settings.keepDataPeriodDays === undefined) {
                     this.settings.keepDataPeriodDays = 180;
+                }
+
+                if (this.settings.tlsExpiryNotifyDays === undefined) {
+                    this.settings.tlsExpiryNotifyDays = [ 7, 14, 21 ];
+                }
+
+                if (this.settings.trustProxy === undefined) {
+                    this.settings.trustProxy = false;
                 }
 
                 this.settingsLoaded = true;
@@ -142,18 +187,47 @@ export default {
         },
 
         /**
+         * Callback for saving settings
+         * @callback saveSettingsCB
+         * @param {Object} res Result of operation
+         */
+
+        /**
          * Save Settings
-         * @param currentPassword (Optional) Only need for disableAuth to true
+         * @param {saveSettingsCB} [callback]
+         * @param {string} [currentPassword] Only need for disableAuth to true
          */
         saveSettings(callback, currentPassword) {
-            this.$root.getSocket().emit("setSettings", this.settings, currentPassword, (res) => {
-                this.$root.toastRes(res);
-                this.loadSettings();
+            let valid = this.validateSettings();
+            if (valid.success) {
+                this.$root.getSocket().emit("setSettings", this.settings, currentPassword, (res) => {
+                    this.$root.toastRes(res);
+                    this.loadSettings();
 
-                if (callback) {
-                    callback();
-                }
-            });
+                    if (callback) {
+                        callback();
+                    }
+                });
+            } else {
+                this.$root.toastError(valid.msg);
+            }
+        },
+
+        /**
+         * Ensure settings are valid
+         * @returns {Object} Contains success state and error msg
+         */
+        validateSettings() {
+            if (this.settings.keepDataPeriodDays < 0) {
+                return {
+                    success: false,
+                    msg: this.$t("dataRetentionTimeError"),
+                };
+            }
+            return {
+                success: true,
+                msg: "",
+            };
         },
     }
 };
@@ -162,7 +236,7 @@ export default {
 <style lang="scss" scoped>
 @import "../assets/vars.scss";
 
-.shadow-box {
+.shadow-box-settings {
     padding: 20px;
     min-height: calc(100vh - 155px);
 }
@@ -232,5 +306,9 @@ footer {
             }
         }
     }
+}
+
+.logout {
+    color: $danger !important;
 }
 </style>
