@@ -49,11 +49,11 @@ Uptime Kuma is now running on http://localhost:3001
 
 ### 💪🏻 Non-Docker
 
-Required Tools:
-
--   [Node.js](https://nodejs.org/en/download/) >= 14
--   [Git](https://git-scm.com/downloads)
--   [pm2](https://pm2.keymetrics.io/) - For running Uptime Kuma in the background
+Required Tools: 
+- [Node.js](https://nodejs.org/en/download/) >= 14
+- [npm](https://docs.npmjs.com/cli/) >= 7
+- [Git](https://git-scm.com/downloads) 
+- [pm2](https://pm2.keymetrics.io/) - For running Uptime Kuma in the background
 
 ```bash
 # Update your npm to the latest version
