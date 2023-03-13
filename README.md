@@ -49,11 +49,12 @@ Uptime Kuma is now running on http://localhost:3001
 
 ### 💪🏻 Non-Docker
 
-Required Tools: 
-- [Node.js](https://nodejs.org/en/download/) >= 14
-- [npm](https://docs.npmjs.com/cli/) >= 7
-- [Git](https://git-scm.com/downloads) 
-- [pm2](https://pm2.keymetrics.io/) - For running Uptime Kuma in the background
+Required Tools:
+
+-   [Node.js](https://nodejs.org/en/download/) >= 14
+-   [npm](https://docs.npmjs.com/cli/) >= 7
+-   [Git](https://git-scm.com/downloads)
+-   [pm2](https://pm2.keymetrics.io/) - For running Uptime Kuma in the background
 
 ```bash
 # Update your npm to the latest version
@@ -153,7 +154,7 @@ You can discuss or ask for help in [issues](https://github.com/louislam/uptime-k
 
 ### Subreddit
 
-My Reddit account: [u/louislamlam](https://reddit.com/u/louislamlam).  
+My Reddit account: [u/louislamlam](https://reddit.com/u/louislamlam).
 You can mention me if you ask a question on Reddit.
 [r/Uptime kuma](https://www.reddit.com/r/UptimeKuma/)
 
