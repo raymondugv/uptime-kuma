@@ -1,103 +1,91 @@
 export default {
-    data() {
-        return {
-            system: window.matchMedia("(prefers-color-scheme: dark)").matches
-                ? "dark"
-                : "light",
-            userTheme: localStorage.theme,
-            userHeartbeatBar: localStorage.heartbeatBarTheme,
-            statusPageTheme: "light",
-            forceStatusPageTheme: false,
-            path: "",
-        };
-    },
+  data() {
+    return {
+      system : window.matchMedia("(prefers-color-scheme: dark)").matches
+                   ? "dark"
+                   : "light",
+      userTheme : localStorage.theme,
+      userHeartbeatBar : localStorage.heartbeatBarTheme,
+      statusPageTheme : "light",
+      forceStatusPageTheme : false,
+      path : "",
+    };
+  },
 
-    mounted() {
-        // Default Light
-        if (!this.userTheme) {
-            this.userTheme = "auto";
+  mounted() {
+    // Default Light
+    if (!this.userTheme) {
+      this.userTheme = "auto";
+    }
+
+    // Default Heartbeat Bar
+    if (!this.userHeartbeatBar) {
+      this.userHeartbeatBar = "normal";
+    }
+
+    document.body.classList.add(this.theme);
+    this.updateThemeColorMeta();
+  },
+
+  computed: {
+    theme() {
+      // As entry can be status page now, set forceStatusPageTheme to true to
+      // use status page theme
+      if (this.forceStatusPageTheme) {
+        return this.statusPageTheme;
+      }
+
+      // Entry no need dark
+      if (this.path === "") {
+        return "light";
+      }
+
+      if (this.path.startsWith("/status-page") ||
+          this.path.startsWith("/status")) {
+        if (this.statusPageTheme === "auto") {
+          return this.system;
         }
-
-        // Default Heartbeat Bar
-        if (!this.userHeartbeatBar) {
-            this.userHeartbeatBar = "normal";
+        return this.statusPageTheme;
+      } else {
+        if (this.userTheme === "auto") {
+          return this.system;
         }
-
-        document.body.classList.add(this.theme);
-        this.updateThemeColorMeta();
+        return this.userTheme;
+      }
     },
 
-    computed: {
-        theme() {
-            // As entry can be status page now, set forceStatusPageTheme to true to
-            // use status page theme
-            if (this.forceStatusPageTheme) {
-                return this.statusPageTheme;
-            }
+    isDark() { return this.theme === "dark";},
+  },
 
-            // Entry no need dark
-            if (this.path === "") {
-                return "light";
-            }
+  watch: {
+    "$route.fullPath"(path) { this.path = path;},
 
-            if (
-                this.path.startsWith("/status-page") ||
-                this.path.startsWith("/status")
-            ) {
-                if (this.statusPageTheme === "auto") {
-                    return this.system;
-                }
-                return this.statusPageTheme;
-            } else {
-                if (this.userTheme === "auto") {
-                    return this.system;
-                }
-                return this.userTheme;
-            }
-        },
+    userTheme(to, from) { localStorage.theme = to;},
 
-        isDark() {
-            return this.theme === "dark";
-        },
+    theme(to, from) {
+      document.body.classList.remove(from);
+      document.body.classList.add(this.theme);
+      this.updateThemeColorMeta();
     },
 
-    watch: {
-        "$route.fullPath"(path) {
-            this.path = path;
-        },
+    userHeartbeatBar(to, from) { localStorage.heartbeatBarTheme = to;},
 
-        userTheme(to, from) {
-            localStorage.theme = to;
-        },
-
-        theme(to, from) {
-            document.body.classList.remove(from);
-            document.body.classList.add(this.theme);
-            this.updateThemeColorMeta();
-        },
-
-        userHeartbeatBar(to, from) {
-            localStorage.heartbeatBarTheme = to;
-        },
-
-        heartbeatBarTheme(to, from) {
-            document.body.classList.remove(from);
-            document.body.classList.add(this.heartbeatBarTheme);
-        },
+    heartbeatBarTheme(to, from) {
+      document.body.classList.remove(from);
+      document.body.classList.add(this.heartbeatBarTheme);
     },
+  },
 
-    methods: {
-        /** Update the theme color meta tag */
-        updateThemeColorMeta() {
-            if (this.theme === "dark") {
-                document
-                    .querySelector("#theme-color")
-                    .setAttribute("content", "#161B22");
-            } else {
-                document
-                    .querySelector("#theme-color")
-                    .setAttribute("content", "#5cdd8b");
-            }
-        },
+  methods: {
+    /** Update the theme color meta tag */
+    updateThemeColorMeta() {
+      if (this.theme === "dark") {
+        document.querySelector("#theme-color")
+            .setAttribute("content", "#161B22");
+      } else {
+        document.querySelector("#theme-color")
+            .setAttribute("content", "#5cdd8b");
+      }
     },
+  },
 };
