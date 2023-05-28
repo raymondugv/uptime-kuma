@@ -1491,10 +1491,10 @@ let needSetup = false;
                                 let retryInterval = 0;
 
                                 /*
-              Only replace the default value with the backup file data for the
-              specific version, where it appears the first time More information
-              about that where "let version" will be defined
-              */
+Only replace the default value with the backup file data for the
+specific version, where it appears the first time More information
+about that where "let version" will be defined
+*/
                                 if (version17x) {
                                     retryInterval =
                                         monitorListData[i].retryInterval;

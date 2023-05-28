@@ -516,8 +516,8 @@ router.get(
             const badgeValues = { style };
 
             if (!publicMonitor) {
-                // return a "N/A" badge in naColor (grey), if monitor is not public /
-                // not available / non existent
+                // return a "N/A" badge in naColor (grey), if monitor is not
+                // public / not available / non existent
 
                 badgeValues.message = "N/A";
                 badgeValues.color = badgeConstants.naColor;
@@ -529,16 +529,16 @@ router.get(
                 );
 
                 if (!tlsInfoBean) {
-                    // return a "No/Bad Cert" badge in naColor (grey), if no cert saved
-                    // (does not save bad certs?)
+                    // return a "No/Bad Cert" badge in naColor (grey), if no cert
+                    // saved (does not save bad certs?)
                     badgeValues.message = "No/Bad Cert";
                     badgeValues.color = badgeConstants.naColor;
                 } else {
                     const tlsInfo = JSON.parse(tlsInfoBean.info_json);
 
                     if (!tlsInfo.valid) {
-                        // return a "Bad Cert" badge in naColor (grey), when cert is not
-                        // valid
+                        // return a "Bad Cert" badge in naColor (grey), when cert
+                        // is not valid
                         badgeValues.message = "Bad Cert";
                         badgeValues.color = badgeConstants.downColor;
                     } else {
@@ -553,11 +553,11 @@ router.get(
                         } else {
                             badgeValues.color = downColor;
                         }
-                        // use a given, custom labelColor or use the default badge label
-                        // color (defined by badge-maker)
+                        // use a given, custom labelColor or use the default badge
+                        // label color (defined by badge-maker)
                         badgeValues.labelColor = labelColor ?? "";
-                        // build a label string. If a custom label is given, override the
-                        // default one
+                        // build a label string. If a custom label is given,
+                        // override the default one
                         badgeValues.label = filterAndJoin([
                             labelPrefix,
                             label ?? "Cert Exp.",
