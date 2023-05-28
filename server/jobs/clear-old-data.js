@@ -6,7 +6,8 @@ const DEFAULT_KEEP_PERIOD = 180;
 
 /**
  * Clears old data from the heartbeat table of the database.
- * @return {Promise<void>} A promise that resolves when the data has been cleared.
+ * @return {Promise<void>} A promise that resolves when the data has been
+ *     cleared.
  */
 
 const clearOldData = async () => {
@@ -23,21 +24,29 @@ const clearOldData = async () => {
     try {
         parsedPeriod = parseInt(period);
     } catch (_) {
-        log.warn("clearOldData", "Failed to parse setting, resetting to default..");
+        log.warn(
+            "clearOldData",
+            "Failed to parse setting, resetting to default.."
+        );
         await setSetting("keepDataPeriodDays", DEFAULT_KEEP_PERIOD, "general");
         parsedPeriod = DEFAULT_KEEP_PERIOD;
     }
 
     if (parsedPeriod < 1) {
-        log.info("clearOldData", `Data deletion has been disabled as period is less than 1. Period is ${parsedPeriod} days.`);
+        log.info(
+            "clearOldData",
+            `Data deletion has been disabled as period is less than 1. Period is ${parsedPeriod} days.`
+        );
     } else {
-
-        log.debug("clearOldData", `Clearing Data older than ${parsedPeriod} days...`);
+        log.debug(
+            "clearOldData",
+            `Clearing Data older than ${parsedPeriod} days...`
+        );
 
         try {
             await R.exec(
                 "DELETE FROM heartbeat WHERE time < DATETIME('now', '-' || ? || ' days') ",
-                [ parsedPeriod ]
+                [parsedPeriod]
             );
         } catch (e) {
             log.error("clearOldData", `Failed to clear old data: ${e.message}`);

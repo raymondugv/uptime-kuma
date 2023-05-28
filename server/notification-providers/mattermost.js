@@ -3,34 +3,42 @@ const axios = require("axios");
 const { DOWN, UP } = require("../../src/util");
 
 class Mattermost extends NotificationProvider {
-
     name = "mattermost";
 
     async send(notification, msg, monitorJSON = null, heartbeatJSON = null) {
         let okMsg = "Sent Successfully.";
         try {
-            const mattermostUserName = notification.mattermostusername || "Uptime Kuma";
-            // If heartbeatJSON is null, assume non monitoring notification (Certificate warning) or testing.
+            const mattermostUserName =
+                notification.mattermostusername || "Uptime Kuma";
+            // If heartbeatJSON is null, assume non monitoring notification
+            // (Certificate warning) or testing.
             if (heartbeatJSON == null) {
                 let mattermostTestData = {
                     username: mattermostUserName,
                     text: msg,
                 };
-                await axios.post(notification.mattermostWebhookUrl, mattermostTestData);
+                await axios.post(
+                    notification.mattermostWebhookUrl,
+                    mattermostTestData
+                );
                 return okMsg;
             }
 
             let mattermostChannel;
 
             if (typeof notification.mattermostchannel === "string") {
-                mattermostChannel = notification.mattermostchannel.toLowerCase();
+                mattermostChannel =
+                    notification.mattermostchannel.toLowerCase();
             }
 
             const mattermostIconEmoji = notification.mattermosticonemo;
             let mattermostIconEmojiOnline = "";
             let mattermostIconEmojiOffline = "";
 
-            if (mattermostIconEmoji && typeof mattermostIconEmoji === "string") {
+            if (
+                mattermostIconEmoji &&
+                typeof mattermostIconEmoji === "string"
+            ) {
                 const emojiArray = mattermostIconEmoji.split(" ");
                 if (emojiArray.length >= 2) {
                     mattermostIconEmojiOnline = emojiArray[0];
@@ -79,10 +87,7 @@ class Mattermost extends NotificationProvider {
                             " service went " +
                             statusText,
                         color: color,
-                        title:
-                            monitorJSON.name +
-                            " service went " +
-                            statusText,
+                        title: monitorJSON.name + " service went " + statusText,
                         title_link: monitorJSON.url,
                         fields: [
                             statusField,
@@ -95,15 +100,11 @@ class Mattermost extends NotificationProvider {
                     },
                 ],
             };
-            await axios.post(
-                notification.mattermostWebhookUrl,
-                mattermostdata
-            );
+            await axios.post(notification.mattermostWebhookUrl, mattermostdata);
             return okMsg;
         } catch (error) {
             this.throwGeneralAxiosError(error);
         }
-
     }
 }
 

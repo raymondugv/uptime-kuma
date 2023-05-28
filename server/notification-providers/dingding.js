@@ -14,20 +14,23 @@ class DingDing extends NotificationProvider {
                 let params = {
                     msgtype: "markdown",
                     markdown: {
-                        title: `[${this.statusToString(heartbeatJSON["status"])}] ${monitorJSON["name"]}`,
-                        text: `## [${this.statusToString(heartbeatJSON["status"])}] ${monitorJSON["name"]} \n> ${heartbeatJSON["msg"]}\n> Time (${heartbeatJSON["timezone"]}): ${heartbeatJSON["localDateTime"]}`,
-                    }
+                        title: `[${this.statusToString(
+                            heartbeatJSON["status"]
+                        )}] ${monitorJSON["name"]}`,
+                        text: `## [${this.statusToString(
+                            heartbeatJSON["status"]
+                        )}] ${monitorJSON["name"]} \n> ${
+                            heartbeatJSON["msg"]
+                        }\n> Time (${heartbeatJSON["timezone"]}): ${
+                            heartbeatJSON["localDateTime"]
+                        }`,
+                    },
                 };
                 if (this.sendToDingDing(notification, params)) {
                     return okMsg;
                 }
             } else {
-                let params = {
-                    msgtype: "text",
-                    text: {
-                        content: msg
-                    }
-                };
+                let params = { msgtype: "text", text: { content: msg } };
                 if (this.sendToDingDing(notification, params)) {
                     return okMsg;
                 }
@@ -51,7 +54,11 @@ class DingDing extends NotificationProvider {
             headers: {
                 "Content-Type": "application/json",
             },
-            url: `${notification.webHookUrl}&timestamp=${timestamp}&sign=${encodeURIComponent(this.sign(timestamp, notification.secretKey))}`,
+            url: `${
+                notification.webHookUrl
+            }&timestamp=${timestamp}&sign=${encodeURIComponent(
+                this.sign(timestamp, notification.secretKey)
+            )}`,
             data: JSON.stringify(params),
         };
 
@@ -69,8 +76,7 @@ class DingDing extends NotificationProvider {
      * @returns {string}
      */
     sign(timestamp, secretKey) {
-        return Crypto
-            .createHmac("sha256", Buffer.from(secretKey, "utf8"))
+        return Crypto.createHmac("sha256", Buffer.from(secretKey, "utf8"))
             .update(Buffer.from(`${timestamp}\n${secretKey}`, "utf8"))
             .digest("base64");
     }

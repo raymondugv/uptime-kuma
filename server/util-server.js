@@ -57,22 +57,24 @@ exports.initJWTSecret = async () => {
  */
 exports.tcping = function (hostname, port) {
     return new Promise((resolve, reject) => {
-        tcpp.ping({
-            address: hostname,
-            port: port,
-            attempts: 1,
-        }, function (err, data) {
+        tcpp.ping(
+            {
+                address: hostname,
+                port: port,
+                attempts: 1,
+            },
+            function (err, data) {
+                if (err) {
+                    reject(err);
+                }
 
-            if (err) {
-                reject(err);
+                if (data.results.length >= 1 && data.results[0].err) {
+                    reject(data.results[0].err);
+                }
+
+                resolve(Math.round(data.max));
             }
-
-            if (data.results.length >= 1 && data.results[0].err) {
-                reject(data.results[0].err);
-            }
-
-            resolve(Math.round(data.max));
-        });
+        );
     });
 };
 
@@ -89,7 +91,8 @@ exports.ping = async (hostname, size = 56) => {
         // If the host cannot be resolved, try again with ipv6
         console.debug("ping", "IPv6 error message: " + e.message);
 
-        // As node-ping does not report a specific error for this, try again if it is an empty message with ipv6 no matter what.
+        // As node-ping does not report a specific error for this, try again if it
+        // is an empty message with ipv6 no matter what.
         if (!e.message) {
             return await exports.pingAsync(hostname, true, size);
         } else {
@@ -107,25 +110,28 @@ exports.ping = async (hostname, size = 56) => {
  */
 exports.pingAsync = function (hostname, ipv6 = false, size = 56) {
     return new Promise((resolve, reject) => {
-        ping.promise.probe(hostname, {
-            v6: ipv6,
-            min_reply: 1,
-            deadline: 10,
-            packetSize: size,
-        }).then((res) => {
-            // If ping failed, it will set field to unknown
-            if (res.alive) {
-                resolve(res.time);
-            } else {
-                if (isWindows) {
-                    reject(new Error(exports.convertToUTF8(res.output)));
+        ping.promise
+            .probe(hostname, {
+                v6: ipv6,
+                min_reply: 1,
+                deadline: 10,
+                packetSize: size,
+            })
+            .then((res) => {
+                // If ping failed, it will set field to unknown
+                if (res.alive) {
+                    resolve(res.time);
                 } else {
-                    reject(new Error(res.output));
+                    if (isWindows) {
+                        reject(new Error(exports.convertToUTF8(res.output)));
+                    } else {
+                        reject(new Error(res.output));
+                    }
                 }
-            }
-        }).catch((err) => {
-            reject(err);
-        });
+            })
+            .catch((err) => {
+                reject(err);
+            });
     });
 };
 
@@ -157,10 +163,7 @@ exports.mqttAsync = function (hostname, topic, okMessage, options = {}) {
 
         log.debug("mqtt", `MQTT connecting to ${mqttUrl}`);
 
-        let client = mqtt.connect(mqttUrl, {
-            username,
-            password
-        });
+        let client = mqtt.connect(mqttUrl, { username, password });
 
         client.on("connect", () => {
             log.debug("mqtt", "MQTT connected");
@@ -185,14 +188,23 @@ exports.mqttAsync = function (hostname, topic, okMessage, options = {}) {
             if (messageTopic === topic) {
                 client.end();
                 clearTimeout(timeoutID);
-                if (okMessage != null && okMessage !== "" && message.toString() !== okMessage) {
-                    reject(new Error(`Message Mismatch - Topic: ${messageTopic}; Message: ${message.toString()}`));
+                if (
+                    okMessage != null &&
+                    okMessage !== "" &&
+                    message.toString() !== okMessage
+                ) {
+                    reject(
+                        new Error(
+                            `Message Mismatch - Topic: ${messageTopic}; Message: ${message.toString()}`
+                        )
+                    );
                 } else {
-                    resolve(`Topic: ${messageTopic}; Message: ${message.toString()}`);
+                    resolve(
+                        `Topic: ${messageTopic}; Message: ${message.toString()}`
+                    );
                 }
             }
         });
-
     });
 };
 
@@ -229,7 +241,7 @@ exports.dnsResolve = function (hostname, resolverServer, resolverPort, rrtype) {
     // Remove brackets from IPv6 addresses so we can re-add them to
     // prevent issues with ::1:5300 (::1 port 5300)
     resolverServer = resolverServer.replace("[", "").replace("]", "");
-    resolver.setServers([ `[${resolverServer}]:${resolverPort}` ]);
+    resolver.setServers([`[${resolverServer}]:${resolverPort}`]);
     return new Promise((resolve, reject) => {
         if (rrtype === "PTR") {
             resolver.reverse(hostname, (err, records) => {
@@ -297,7 +309,10 @@ exports.postgresQuery = function (connectionString, query) {
                 // Connected here
                 try {
                     // No query provided by user, use SELECT 1
-                    if (!query || (typeof query === "string" && query.trim() === "")) {
+                    if (
+                        !query ||
+                        (typeof query === "string" && query.trim() === "")
+                    ) {
                         query = "SELECT 1";
                     }
 
@@ -314,7 +329,6 @@ exports.postgresQuery = function (connectionString, query) {
                 }
             }
         });
-
     });
 };
 
@@ -339,7 +353,10 @@ exports.mysqlQuery = function (connectionString, query) {
                 if (Array.isArray(res)) {
                     resolve("Rows: " + res.length);
                 } else {
-                    resolve("No Error, but the result is not an array. Type: " + typeof res);
+                    resolve(
+                        "No Error, but the result is not an array. Type: " +
+                            typeof res
+                    );
                 }
             }
             connection.destroy();
@@ -382,21 +399,21 @@ exports.radius = function (
     calledStationId,
     callingStationId,
     secret,
-    port = 1812,
+    port = 1812
 ) {
     const client = new radiusClient({
         host: hostname,
         hostPort: port,
-        dictionaries: [ file ],
+        dictionaries: [file],
     });
 
     return client.accessRequest({
         secret: secret,
         attributes: [
-            [ attributes.USER_NAME, username ],
-            [ attributes.USER_PASSWORD, password ],
-            [ attributes.CALLING_STATION_ID, callingStationId ],
-            [ attributes.CALLED_STATION_ID, calledStationId ],
+            [attributes.USER_NAME, username],
+            [attributes.USER_PASSWORD, password],
+            [attributes.CALLING_STATION_ID, callingStationId],
+            [attributes.CALLED_STATION_ID, calledStationId],
         ],
     });
 };
@@ -469,7 +486,7 @@ exports.setSettings = async function (type, data) {
 };
 
 // ssl-checker by @dyaa
-//https://github.com/dyaa/ssl-checker/blob/master/src/index.ts
+// https://github.com/dyaa/ssl-checker/blob/master/src/index.ts
 
 /**
  * Get number of days between two dates
@@ -512,23 +529,27 @@ const parseCertificateInfo = function (info) {
             break;
         }
         link.validTo = new Date(link.valid_to);
-        link.validFor = link.subjectaltname?.replace(/DNS:|IP Address:/g, "").split(", ");
+        link.validFor = link.subjectaltname
+            ?.replace(/DNS:|IP Address:/g, "")
+            .split(", ");
         link.daysRemaining = getDaysRemaining(new Date(), link.validTo);
 
         existingList[link.fingerprint] = true;
 
         // Move up the chain until loop is encountered
         if (link.issuerCertificate == null) {
-            link.certType = (i === 0) ? "self-signed" : "root CA";
+            link.certType = i === 0 ? "self-signed" : "root CA";
             break;
         } else if (link.issuerCertificate.fingerprint in existingList) {
-            // a root CA certificate is typically "signed by itself"  (=> "self signed certificate") and thus the "issuerCertificate" is a reference to itself.
+            // a root CA certificate is typically "signed by itself"  (=> "self signed
+            // certificate") and thus the "issuerCertificate" is a reference to
+            // itself.
             log.debug("cert", `[Last] ${link.issuerCertificate.fingerprint}`);
-            link.certType = (i === 0) ? "self-signed" : "root CA";
+            link.certType = i === 0 ? "self-signed" : "root CA";
             link.issuerCertificate = null;
             break;
         } else {
-            link.certType = (i === 0) ? "server" : "intermediate CA";
+            link.certType = i === 0 ? "server" : "intermediate CA";
             link = link.issuerCertificate;
         }
 
@@ -558,10 +579,7 @@ exports.checkCertificate = function (res) {
     log.debug("cert", "Parsing Certificate Info");
     const parsedInfo = parseCertificateInfo(info);
 
-    return {
-        valid: valid,
-        certInfo: parsedInfo
-    };
+    return { valid: valid, certInfo: parsedInfo };
 };
 
 /**
@@ -569,7 +587,8 @@ exports.checkCertificate = function (res) {
  * @param {number} status The status code to check
  * @param {string[]} acceptedCodes An array of accepted status codes
  * @returns {boolean} True if status code within range, false otherwise
- * @throws {Error} Will throw an error if the provided status code is not a valid range string or code string
+ * @throws {Error} Will throw an error if the provided status code is not a
+ *     valid range string or code string
  */
 exports.checkStatusCode = function (status, acceptedCodes) {
     if (acceptedCodes == null || acceptedCodes.length === 0) {
@@ -577,7 +596,9 @@ exports.checkStatusCode = function (status, acceptedCodes) {
     }
 
     for (const codeRange of acceptedCodes) {
-        const codeRangeSplit = codeRange.split("-").map(string => parseInt(string));
+        const codeRangeSplit = codeRange
+            .split("-")
+            .map((string) => parseInt(string));
         if (codeRangeSplit.length === 1) {
             if (status === codeRangeSplit[0]) {
                 return true;
@@ -601,7 +622,6 @@ exports.checkStatusCode = function (status, acceptedCodes) {
  * @returns {number}
  */
 exports.getTotalClientInRoom = (io, roomName) => {
-
     const sockets = io.sockets;
 
     if (!sockets) {
@@ -639,7 +659,10 @@ exports.allowDevAllOrigin = (res) => {
  */
 exports.allowAllOrigin = (res) => {
     res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    res.header(
+        "Access-Control-Allow-Headers",
+        "Origin, X-Requested-With, Content-Type, Accept"
+    );
 };
 
 /**
@@ -678,7 +701,7 @@ exports.doubleCheckPassword = async (socket, currentPassword) => {
 exports.startUnitTest = async () => {
     console.log("Starting unit test...");
     const npm = /^win/.test(process.platform) ? "npm.cmd" : "npm";
-    const child = childProcess.spawn(npm, [ "run", "jest-backend" ]);
+    const child = childProcess.spawn(npm, ["run", "jest-backend"]);
 
     child.stdout.on("data", (data) => {
         console.log(data.toString());
@@ -698,7 +721,7 @@ exports.startUnitTest = async () => {
 exports.startE2eTests = async () => {
     console.log("Starting unit test...");
     const npm = /^win/.test(process.platform) ? "npm.cmd" : "npm";
-    const child = childProcess.spawn(npm, [ "run", "cy:run" ]);
+    const child = childProcess.spawn(npm, ["run", "cy:run"]);
 
     child.stdout.on("data", (data) => {
         console.log(data.toString());
@@ -763,18 +786,18 @@ exports.filterAndJoin = (parts, connector = "") => {
 module.exports.sendHttpError = (res, msg = "") => {
     if (msg.includes("SQLITE_BUSY") || msg.includes("SQLITE_LOCKED")) {
         res.status(503).json({
-            "status": "fail",
-            "msg": msg,
+            status: "fail",
+            msg: msg,
         });
     } else if (msg.toLowerCase().includes("not found")) {
         res.status(404).json({
-            "status": "fail",
-            "msg": msg,
+            status: "fail",
+            msg: msg,
         });
     } else {
         res.status(403).json({
-            "status": "fail",
-            "msg": msg,
+            status: "fail",
+            msg: msg,
         });
     }
 };
@@ -845,54 +868,72 @@ module.exports.timeObjectToLocal = (obj, timezone = undefined) => {
  * @param {Object} options from gRPC client
  */
 module.exports.grpcQuery = async (options) => {
-    const { grpcUrl, grpcProtobufData, grpcServiceName, grpcEnableTls, grpcMethod, grpcBody } = options;
+    const {
+        grpcUrl,
+        grpcProtobufData,
+        grpcServiceName,
+        grpcEnableTls,
+        grpcMethod,
+        grpcBody,
+    } = options;
     const protocObject = protojs.parse(grpcProtobufData);
     const protoServiceObject = protocObject.root.lookupService(grpcServiceName);
     const Client = grpc.makeGenericClientConstructor({});
-    const credentials = grpcEnableTls ? grpc.credentials.createSsl() : grpc.credentials.createInsecure();
-    const client = new Client(
-        grpcUrl,
-        credentials
+    const credentials = grpcEnableTls
+        ? grpc.credentials.createSsl()
+        : grpc.credentials.createInsecure();
+    const client = new Client(grpcUrl, credentials);
+    const grpcService = protoServiceObject.create(
+        function (method, requestData, cb) {
+            const fullServiceName = method.fullName;
+            const serviceFQDN = fullServiceName.split(".");
+            const serviceMethod = serviceFQDN.pop();
+            const serviceMethodClientImpl = `/${serviceFQDN
+                .slice(1)
+                .join(".")}/${serviceMethod}`;
+            log.debug("monitor", `gRPC method ${serviceMethodClientImpl}`);
+            client.makeUnaryRequest(
+                serviceMethodClientImpl,
+                (arg) => arg,
+                (arg) => arg,
+                requestData,
+                cb
+            );
+        },
+        false,
+        false
     );
-    const grpcService = protoServiceObject.create(function (method, requestData, cb) {
-        const fullServiceName = method.fullName;
-        const serviceFQDN = fullServiceName.split(".");
-        const serviceMethod = serviceFQDN.pop();
-        const serviceMethodClientImpl = `/${serviceFQDN.slice(1).join(".")}/${serviceMethod}`;
-        log.debug("monitor", `gRPC method ${serviceMethodClientImpl}`);
-        client.makeUnaryRequest(
-            serviceMethodClientImpl,
-            arg => arg,
-            arg => arg,
-            requestData,
-            cb);
-    }, false, false);
     return new Promise((resolve, _) => {
         try {
-            return grpcService[`${grpcMethod}`](JSON.parse(grpcBody), function (err, response) {
-                const responseData = JSON.stringify(response);
-                if (err) {
-                    return resolve({
-                        code: err.code,
-                        errorMessage: err.details,
-                        data: ""
-                    });
-                } else {
-                    log.debug("monitor:", `gRPC response: ${JSON.stringify(response)}`);
-                    return resolve({
-                        code: 1,
-                        errorMessage: "",
-                        data: responseData
-                    });
+            return grpcService[`${grpcMethod}`](
+                JSON.parse(grpcBody),
+                function (err, response) {
+                    const responseData = JSON.stringify(response);
+                    if (err) {
+                        return resolve({
+                            code: err.code,
+                            errorMessage: err.details,
+                            data: "",
+                        });
+                    } else {
+                        log.debug(
+                            "monitor:",
+                            `gRPC response: ${JSON.stringify(response)}`
+                        );
+                        return resolve({
+                            code: 1,
+                            errorMessage: "",
+                            data: responseData,
+                        });
+                    }
                 }
-            });
+            );
         } catch (err) {
             return resolve({
                 code: -1,
                 errorMessage: `Error ${err}. Please review your gRPC configuration option. The service name must not include package name value, and the method name must follow camelCase format`,
-                data: ""
+                data: "",
             });
         }
-
     });
 };

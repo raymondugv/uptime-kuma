@@ -25,4 +25,3 @@ RUN set -eux && \
     cloudflared version && \
     rm -rf /var/lib/apt/lists/* && \
     apt --yes autoremove
-

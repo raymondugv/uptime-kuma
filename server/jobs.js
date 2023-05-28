@@ -25,11 +25,10 @@ const initBackgroundJobs = async function () {
                 name: job.name,
                 timezone,
             },
-            job.jobFunc,
+            job.jobFunc
         );
         job.croner = cornerJob;
     }
-
 };
 
 /** Stop all background jobs if running */
@@ -44,5 +43,5 @@ const stopBackgroundJobs = function () {
 
 module.exports = {
     initBackgroundJobs,
-    stopBackgroundJobs
+    stopBackgroundJobs,
 };

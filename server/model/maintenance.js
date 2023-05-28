@@ -1,5 +1,9 @@
 const { BeanModel } = require("redbean-node/dist/bean-model");
-const { parseTimeObject, parseTimeFromTimeObject, log } = require("../../src/util");
+const {
+    parseTimeObject,
+    parseTimeFromTimeObject,
+    log,
+} = require("../../src/util");
 const { R } = require("redbean-node");
 const dayjs = require("dayjs");
 const Cron = require("croner");
@@ -7,14 +11,12 @@ const { UptimeKumaServer } = require("../uptime-kuma-server");
 const apicache = require("../modules/apicache");
 
 class Maintenance extends BeanModel {
-
     /**
      * Return an object that ready to parse to JSON for public
      * Only show necessary data to public
      * @returns {Object}
      */
     async toPublicJSON() {
-
         let dateRange = [];
         if (this.start_date) {
             dateRange.push(this.start_date);
@@ -41,14 +43,17 @@ class Maintenance extends BeanModel {
             active: !!this.active,
             dateRange: dateRange,
             timeRange: timeRange,
-            weekdays: (this.weekdays) ? JSON.parse(this.weekdays) : [],
-            daysOfMonth: (this.days_of_month) ? JSON.parse(this.days_of_month) : [],
+            weekdays: this.weekdays ? JSON.parse(this.weekdays) : [],
+            daysOfMonth: this.days_of_month
+                ? JSON.parse(this.days_of_month)
+                : [],
             timeslotList: [],
             cron: this.cron,
             duration: this.duration,
             durationMinutes: parseInt(this.duration / 60),
-            timezone: await this.getTimezone(),         // Only valid timezone
-            timezoneOption: this.timezone,               // Mainly for dropdown menu, because there is a option "SAME_AS_SERVER"
+            timezone: await this.getTimezone(), // Only valid timezone
+            timezoneOption: this.timezone, // Mainly for dropdown menu, because there
+            // is a option "SAME_AS_SERVER"
             timezoneOffset: await this.getTimezoneOffset(),
             status: await this.getStatus(),
         };
@@ -74,7 +79,9 @@ class Maintenance extends BeanModel {
                     let startDateDayjs = dayjs(nextRunDate);
 
                     let startDate = startDateDayjs.toISOString();
-                    let endDate = startDateDayjs.add(this.duration, "second").toISOString();
+                    let endDate = startDateDayjs
+                        .add(this.duration, "second")
+                        .toISOString();
 
                     obj.timeslotList.push({
                         startDate,
@@ -131,7 +138,9 @@ class Maintenance extends BeanModel {
      * @returns {number} Duration of maintenance
      */
     calcDuration() {
-        let duration = dayjs.utc(this.end_time, "HH:mm").diff(dayjs.utc(this.start_time, "HH:mm"), "second");
+        let duration = dayjs
+            .utc(this.end_time, "HH:mm")
+            .diff(dayjs.utc(this.start_time, "HH:mm"), "second");
         // Add 24hours if it is across day
         if (duration < 0) {
             duration += 24 * 3600;
@@ -201,7 +210,10 @@ class Maintenance extends BeanModel {
      */
     async run(throwError = false) {
         if (this.beanMeta.job) {
-            log.debug("maintenance", "Maintenance is already running, stop it first. id: " + this.id);
+            log.debug(
+                "maintenance",
+                "Maintenance is already running, stop it first. id: " + this.id
+            );
             this.stop();
         }
 
@@ -221,23 +233,40 @@ class Maintenance extends BeanModel {
         if (this.strategy === "manual") {
             // Do nothing, because it is controlled by the user
         } else if (this.strategy === "single") {
-            this.beanMeta.job = new Cron(this.start_date, { timezone: await this.getTimezone() }, () => {
-                log.info("maintenance", "Maintenance id: " + this.id + " is under maintenance now");
-                UptimeKumaServer.getInstance().sendMaintenanceListByUserID(this.user_id);
-                apicache.clear();
-            });
+            this.beanMeta.job = new Cron(
+                this.start_date,
+                { timezone: await this.getTimezone() },
+                () => {
+                    log.info(
+                        "maintenance",
+                        "Maintenance id: " +
+                            this.id +
+                            " is under maintenance now"
+                    );
+                    UptimeKumaServer.getInstance().sendMaintenanceListByUserID(
+                        this.user_id
+                    );
+                    apicache.clear();
+                }
+            );
         } else if (this.cron != null) {
             // Here should be cron or recurring
             try {
                 this.beanMeta.status = "scheduled";
 
                 let startEvent = (customDuration = 0) => {
-                    log.info("maintenance", "Maintenance id: " + this.id + " is under maintenance now");
+                    log.info(
+                        "maintenance",
+                        "Maintenance id: " +
+                            this.id +
+                            " is under maintenance now"
+                    );
 
                     this.beanMeta.status = "under-maintenance";
                     clearTimeout(this.beanMeta.durationTimeout);
 
-                    // Check if duration is still in the window. If not, use the duration from the current time to the end of the window
+                    // Check if duration is still in the window. If not, use the duration
+                    // from the current time to the end of the window
                     let duration;
 
                     if (customDuration > 0) {
@@ -251,30 +280,46 @@ class Maintenance extends BeanModel {
                         duration = this.duration * 1000;
                     }
 
-                    UptimeKumaServer.getInstance().sendMaintenanceListByUserID(this.user_id);
+                    UptimeKumaServer.getInstance().sendMaintenanceListByUserID(
+                        this.user_id
+                    );
 
                     this.beanMeta.durationTimeout = setTimeout(() => {
                         // End of maintenance for this timeslot
                         this.beanMeta.status = "scheduled";
-                        UptimeKumaServer.getInstance().sendMaintenanceListByUserID(this.user_id);
+                        UptimeKumaServer.getInstance().sendMaintenanceListByUserID(
+                            this.user_id
+                        );
                     }, duration);
                 };
 
                 // Create Cron
-                this.beanMeta.job = new Cron(this.cron, {
-                    timezone: await this.getTimezone(),
-                }, startEvent);
+                this.beanMeta.job = new Cron(
+                    this.cron,
+                    {
+                        timezone: await this.getTimezone(),
+                    },
+                    startEvent
+                );
 
                 // Continue if the maintenance is still in the window
                 let runningTimeslot = this.getRunningTimeslot();
                 let current = dayjs();
 
                 if (runningTimeslot) {
-                    let duration = dayjs(runningTimeslot.endDate).diff(current, "second") * 1000;
-                    log.debug("maintenance", "Maintenance id: " + this.id + " Remaining duration: " + duration + "ms");
+                    let duration =
+                        dayjs(runningTimeslot.endDate).diff(current, "second") *
+                        1000;
+                    log.debug(
+                        "maintenance",
+                        "Maintenance id: " +
+                            this.id +
+                            " Remaining duration: " +
+                            duration +
+                            "ms"
+                    );
                     startEvent(duration);
                 }
-
             } catch (e) {
                 log.error("maintenance", "Error in maintenance id: " + this.id);
                 log.error("maintenance", "Cron: " + this.cron);
@@ -284,14 +329,20 @@ class Maintenance extends BeanModel {
                     throw e;
                 }
             }
-
         } else {
-            log.error("maintenance", "Maintenance id: " + this.id + " has no cron");
+            log.error(
+                "maintenance",
+                "Maintenance id: " + this.id + " has no cron"
+            );
         }
     }
 
     getRunningTimeslot() {
-        let start = dayjs(this.beanMeta.job.nextRun(dayjs().add(-this.duration, "second").toDate()));
+        let start = dayjs(
+            this.beanMeta.job.nextRun(
+                dayjs().add(-this.duration, "second").toDate()
+            )
+        );
         let end = start.add(this.duration, "second");
         let current = dayjs();
 
@@ -337,12 +388,20 @@ class Maintenance extends BeanModel {
         }
 
         // Check if the maintenance is started
-        if (this.start_date && dayjs().isBefore(dayjs.tz(this.start_date, await this.getTimezone()))) {
+        if (
+            this.start_date &&
+            dayjs().isBefore(
+                dayjs.tz(this.start_date, await this.getTimezone())
+            )
+        ) {
             return "scheduled";
         }
 
         // Check if the maintenance is ended
-        if (this.end_date && dayjs().isAfter(dayjs.tz(this.end_date, await this.getTimezone()))) {
+        if (
+            this.end_date &&
+            dayjs().isAfter(dayjs.tz(this.end_date, await this.getTimezone()))
+        ) {
             return "ended";
         }
 
@@ -372,7 +431,8 @@ class Maintenance extends BeanModel {
             let array = this.start_time.split(":");
             let hour = parseInt(array[0]);
             let minute = parseInt(array[1]);
-            this.cron = minute + " " + hour + " */" + this.interval_day + " * *";
+            this.cron =
+                minute + " " + hour + " */" + this.interval_day + " * *";
             this.duration = this.calcDuration();
             log.debug("maintenance", "Cron: " + this.cron);
             log.debug("maintenance", "Duration: " + this.duration);
@@ -403,12 +463,11 @@ class Maintenance extends BeanModel {
             }
 
             // Remove duplicate
-            dayList = [ ...new Set(dayList) ];
+            dayList = [...new Set(dayList)];
 
             this.cron = minute + " " + hour + " " + dayList.join(",") + " * *";
             this.duration = this.calcDuration();
         }
-
     }
 }
 
