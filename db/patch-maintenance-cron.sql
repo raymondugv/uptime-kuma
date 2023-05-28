@@ -9,3 +9,4 @@ ALTER TABLE maintenance
 ALTER TABLE maintenance
     ADD duration INTEGER;
 COMMIT;
+
