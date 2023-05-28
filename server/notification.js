@@ -1,5 +1,5 @@
-const {R} = require("redbean-node");
-const {log} = require("../src/util");
+const { R } = require("redbean-node");
+const { log } = require("../src/util");
 const Alerta = require("./notification-providers/alerta");
 const AlertNow = require("./notification-providers/alertnow");
 const AliyunSms = require("./notification-providers/aliyun-sms");
@@ -52,129 +52,170 @@ const ServerChan = require("./notification-providers/serverchan");
 const ZohoCliq = require("./notification-providers/zoho-cliq");
 
 class Notification {
-  providerList = {};
+    providerList = {};
 
-  /** Initialize the notification providers */
-  static init() {
-    log.info("notification", "Prepare Notification Providers");
+    /** Initialize the notification providers */
+    static init() {
+        log.info("notification", "Prepare Notification Providers");
 
-    this.providerList = {};
+        this.providerList = {};
 
-    const list = [
-      new Alerta(),       new AlertNow(),      new AliyunSms(),
-      new Apprise(),      new Bark(),          new ClickSendSMS(),
-      new DingDing(),     new Discord(),       new Feishu(),
-      new FreeMobile(),   new GoogleChat(),    new Gorush(),
-      new Gotify(),       new HomeAssistant(), new Kook(),
-      new Line(),         new LineNotify(),    new LunaSea(),
-      new Matrix(),       new Mattermost(),    new Ntfy(),
-      new Octopush(),     new OneBot(),        new Opsgenie(),
-      new PagerDuty(),    new PagerTree(),     new PromoSMS(),
-      new Pushbullet(),   new PushDeer(),      new Pushover(),
-      new Pushy(),        new RocketChat(),    new ServerChan(),
-      new SerwerSMS(),    new Signal(),        new SMSManager(),
-      new Slack(),        new SMSEagle(),      new SMTP(),
-      new Squadcast(),    new Stackfield(),    new Teams(),
-      new TechulusPush(), new Telegram(),      new Twilio(),
-      new Splunk(),       new Webhook(),       new WeCom(),
-      new GoAlert(),      new ZohoCliq(),
-    ];
+        const list = [
+            new Alerta(),
+            new AlertNow(),
+            new AliyunSms(),
+            new Apprise(),
+            new Bark(),
+            new ClickSendSMS(),
+            new DingDing(),
+            new Discord(),
+            new Feishu(),
+            new FreeMobile(),
+            new GoogleChat(),
+            new Gorush(),
+            new Gotify(),
+            new HomeAssistant(),
+            new Kook(),
+            new Line(),
+            new LineNotify(),
+            new LunaSea(),
+            new Matrix(),
+            new Mattermost(),
+            new Ntfy(),
+            new Octopush(),
+            new OneBot(),
+            new Opsgenie(),
+            new PagerDuty(),
+            new PagerTree(),
+            new PromoSMS(),
+            new Pushbullet(),
+            new PushDeer(),
+            new Pushover(),
+            new Pushy(),
+            new RocketChat(),
+            new ServerChan(),
+            new SerwerSMS(),
+            new Signal(),
+            new SMSManager(),
+            new Slack(),
+            new SMSEagle(),
+            new SMTP(),
+            new Squadcast(),
+            new Stackfield(),
+            new Teams(),
+            new TechulusPush(),
+            new Telegram(),
+            new Twilio(),
+            new Splunk(),
+            new Webhook(),
+            new WeCom(),
+            new GoAlert(),
+            new ZohoCliq(),
+        ];
 
-    for (let item of list) {
-      if (!item.name) {
-        throw new Error("Notification provider without name");
-      }
+        for (let item of list) {
+            if (!item.name) {
+                throw new Error("Notification provider without name");
+            }
 
-      if (this.providerList[item.name]) {
-        throw new Error("Duplicate notification provider name");
-      }
-      this.providerList[item.name] = item;
-    }
-  }
-
-  /**
-   * Send a notification
-   * @param {BeanModel} notification
-   * @param {string} msg General Message
-   * @param {Object} monitorJSON Monitor details (For Up/Down only)
-   * @param {Object} heartbeatJSON Heartbeat details (For Up/Down only)
-   * @returns {Promise<string>} Successful msg
-   * @throws Error with fail msg
-   */
-  static async send(notification, msg, monitorJSON = null,
-                    heartbeatJSON = null) {
-    if (this.providerList[notification.type]) {
-      return this.providerList[notification.type].send(
-          notification, msg, monitorJSON, heartbeatJSON);
-    } else {
-      throw new Error("Notification type is not supported");
-    }
-  }
-
-  /**
-   * Save a notification
-   * @param {Object} notification Notification to save
-   * @param {?number} notificationID ID of notification to update
-   * @param {number} userID ID of user who adds notification
-   * @returns {Promise<Bean>}
-   */
-  static async save(notification, notificationID, userID) {
-    let bean;
-
-    if (notificationID) {
-      bean = await R.findOne("notification", " id = ? AND user_id = ? ", [
-        notificationID,
-        userID,
-      ]);
-
-      if (!bean) {
-        throw new Error("notification not found");
-      }
-    } else {
-      bean = R.dispense("notification");
+            if (this.providerList[item.name]) {
+                throw new Error("Duplicate notification provider name");
+            }
+            this.providerList[item.name] = item;
+        }
     }
 
-    bean.name = notification.name;
-    bean.user_id = userID;
-    bean.config = JSON.stringify(notification);
-    bean.is_default = notification.isDefault || false;
-    await R.store(bean);
-
-    if (notification.applyExisting) {
-      await applyNotificationEveryMonitor(bean.id, userID);
+    /**
+     * Send a notification
+     * @param {BeanModel} notification
+     * @param {string} msg General Message
+     * @param {Object} monitorJSON Monitor details (For Up/Down only)
+     * @param {Object} heartbeatJSON Heartbeat details (For Up/Down only)
+     * @returns {Promise<string>} Successful msg
+     * @throws Error with fail msg
+     */
+    static async send(
+        notification,
+        msg,
+        monitorJSON = null,
+        heartbeatJSON = null
+    ) {
+        if (this.providerList[notification.type]) {
+            return this.providerList[notification.type].send(
+                notification,
+                msg,
+                monitorJSON,
+                heartbeatJSON
+            );
+        } else {
+            throw new Error("Notification type is not supported");
+        }
     }
 
-    return bean;
-  }
+    /**
+     * Save a notification
+     * @param {Object} notification Notification to save
+     * @param {?number} notificationID ID of notification to update
+     * @param {number} userID ID of user who adds notification
+     * @returns {Promise<Bean>}
+     */
+    static async save(notification, notificationID, userID) {
+        let bean;
 
-  /**
-   * Delete a notification
-   * @param {number} notificationID ID of notification to delete
-   * @param {number} userID ID of user who created notification
-   * @returns {Promise<void>}
-   */
-  static async delete(notificationID, userID) {
-    let bean = await R.findOne("notification", " id = ? AND user_id = ? ", [
-      notificationID,
-      userID,
-    ]);
+        if (notificationID) {
+            bean = await R.findOne("notification", " id = ? AND user_id = ? ", [
+                notificationID,
+                userID,
+            ]);
 
-    if (!bean) {
-      throw new Error("notification not found");
+            if (!bean) {
+                throw new Error("notification not found");
+            }
+        } else {
+            bean = R.dispense("notification");
+        }
+
+        bean.name = notification.name;
+        bean.user_id = userID;
+        bean.config = JSON.stringify(notification);
+        bean.is_default = notification.isDefault || false;
+        await R.store(bean);
+
+        if (notification.applyExisting) {
+            await applyNotificationEveryMonitor(bean.id, userID);
+        }
+
+        return bean;
     }
 
-    await R.trash(bean);
-  }
+    /**
+     * Delete a notification
+     * @param {number} notificationID ID of notification to delete
+     * @param {number} userID ID of user who created notification
+     * @returns {Promise<void>}
+     */
+    static async delete(notificationID, userID) {
+        let bean = await R.findOne("notification", " id = ? AND user_id = ? ", [
+            notificationID,
+            userID,
+        ]);
 
-  /**
-   * Check if apprise exists
-   * @returns {boolean} Does the command apprise exist?
-   */
-  static checkApprise() {
-    let commandExistsSync = require("command-exists").sync;
-    let exists = commandExistsSync("apprise");
-    return exists;
-  }
+        if (!bean) {
+            throw new Error("notification not found");
+        }
+
+        await R.trash(bean);
+    }
+
+    /**
+     * Check if apprise exists
+     * @returns {boolean} Does the command apprise exist?
+     */
+    static checkApprise() {
+        let commandExistsSync = require("command-exists").sync;
+        let exists = commandExistsSync("apprise");
+        return exists;
+    }
 }
 
 /**
@@ -184,24 +225,26 @@ class Notification {
  * @returns {Promise<void>}
  */
 async function applyNotificationEveryMonitor(notificationID, userID) {
-  let monitors = await R.getAll("SELECT id FROM monitor WHERE user_id = ?", [
-    userID,
-  ]);
+    let monitors = await R.getAll("SELECT id FROM monitor WHERE user_id = ?", [
+        userID,
+    ]);
 
-  for (let i = 0; i < monitors.length; i++) {
-    let checkNotification = await R.findOne(
-        "monitor_notification", " monitor_id = ? AND notification_id = ? ",
-        [ monitors[i].id, notificationID ]);
+    for (let i = 0; i < monitors.length; i++) {
+        let checkNotification = await R.findOne(
+            "monitor_notification",
+            " monitor_id = ? AND notification_id = ? ",
+            [monitors[i].id, notificationID]
+        );
 
-    if (!checkNotification) {
-      let relation = R.dispense("monitor_notification");
-      relation.monitor_id = monitors[i].id;
-      relation.notification_id = notificationID;
-      await R.store(relation);
+        if (!checkNotification) {
+            let relation = R.dispense("monitor_notification");
+            relation.monitor_id = monitors[i].id;
+            relation.notification_id = notificationID;
+            await R.store(relation);
+        }
     }
-  }
 }
 
 module.exports = {
-  Notification,
+    Notification,
 };
