@@ -1,337 +1,356 @@
-const {R} = require("redbean-node");
-const {checkLogin, setSetting} = require("../util-server");
+const { R } = require("redbean-node");
+const { checkLogin, setSetting } = require("../util-server");
 const dayjs = require("dayjs");
-const {log} = require("../../src/util");
+const { log } = require("../../src/util");
 const ImageDataURI = require("../image-data-uri");
 const Database = require("../database");
 const apicache = require("../modules/apicache");
 const StatusPage = require("../model/status_page");
-const {UptimeKumaServer} = require("../uptime-kuma-server");
+const { UptimeKumaServer } = require("../uptime-kuma-server");
 
 /**
  * Socket handlers for status page
  * @param {Socket} socket Socket.io instance to add listeners on
  */
 module.exports.statusPageSocketHandler = (socket) => {
-  // Post or edit incident
-  socket.on("postIncident", async (slug, incident, callback) => {
-    try {
-      checkLogin(socket);
+    // Post or edit incident
+    socket.on("postIncident", async (slug, incident, callback) => {
+        try {
+            checkLogin(socket);
 
-      let statusPageID = await StatusPage.slugToID(slug);
+            let statusPageID = await StatusPage.slugToID(slug);
 
-      if (!statusPageID) {
-        throw new Error("slug is not found");
-      }
+            if (!statusPageID) {
+                throw new Error("slug is not found");
+            }
 
-      await R.exec("UPDATE incident SET pin = 0 WHERE status_page_id = ? ",
-                   [ statusPageID ]);
+            await R.exec(
+                "UPDATE incident SET pin = 0 WHERE status_page_id = ? ",
+                [statusPageID]
+            );
 
-      let incidentBean;
+            let incidentBean;
 
-      if (incident.id) {
-        incidentBean =
-            await R.findOne("incident", " id = ? AND status_page_id = ? ",
-                            [ incident.id, statusPageID ]);
-      }
+            if (incident.id) {
+                incidentBean = await R.findOne(
+                    "incident",
+                    " id = ? AND status_page_id = ? ",
+                    [incident.id, statusPageID]
+                );
+            }
 
-      if (incidentBean == null) {
-        incidentBean = R.dispense("incident");
-      }
+            if (incidentBean == null) {
+                incidentBean = R.dispense("incident");
+            }
 
-      incidentBean.title = incident.title;
-      incidentBean.content = incident.content;
-      incidentBean.style = incident.style;
-      incidentBean.pin = true;
-      incidentBean.status_page_id = statusPageID;
+            incidentBean.title = incident.title;
+            incidentBean.content = incident.content;
+            incidentBean.style = incident.style;
+            incidentBean.pin = true;
+            incidentBean.status_page_id = statusPageID;
 
-      if (incident.id) {
-        incidentBean.lastUpdatedDate = R.isoDateTime(dayjs.utc());
-      } else {
-        incidentBean.createdDate = R.isoDateTime(dayjs.utc());
-      }
+            if (incident.id) {
+                incidentBean.lastUpdatedDate = R.isoDateTime(dayjs.utc());
+            } else {
+                incidentBean.createdDate = R.isoDateTime(dayjs.utc());
+            }
 
-      await R.store(incidentBean);
+            await R.store(incidentBean);
 
-      callback({
-        ok : true,
-        incident : incidentBean.toPublicJSON(),
-      });
-    } catch (error) {
-      callback({
-        ok : false,
-        msg : error.message,
-      });
-    }
-  });
-
-  socket.on("unpinIncident", async (slug, callback) => {
-    try {
-      checkLogin(socket);
-
-      let statusPageID = await StatusPage.slugToID(slug);
-
-      await R.exec(
-          "UPDATE incident SET pin = 0 WHERE pin = 1 AND status_page_id = ? ",
-          [ statusPageID ]);
-
-      callback({
-        ok : true,
-      });
-    } catch (error) {
-      callback({
-        ok : false,
-        msg : error.message,
-      });
-    }
-  });
-
-  socket.on("getStatusPage", async (slug, callback) => {
-    try {
-      checkLogin(socket);
-
-      let statusPage = await R.findOne("status_page", " slug = ? ", [ slug ]);
-
-      if (!statusPage) {
-        throw new Error("No slug?");
-      }
-
-      callback({
-        ok : true,
-        config : await statusPage.toJSON(),
-      });
-    } catch (error) {
-      callback({
-        ok : false,
-        msg : error.message,
-      });
-    }
-  });
-
-  // Save Status Page
-  // imgDataUrl Only Accept PNG!
-  socket.on("saveStatusPage", async (slug, config, imgDataUrl, publicGroupList,
-                                     callback) => {
-    try {
-      checkLogin(socket);
-
-      // Save Config
-      let statusPage = await R.findOne("status_page", " slug = ? ", [ slug ]);
-
-      if (!statusPage) {
-        throw new Error("No slug?");
-      }
-
-      checkSlug(config.slug);
-
-      const header = "data:image/png;base64,";
-
-      // Check logo format
-      // If is image data url, convert to png file
-      // Else assume it is a url, nothing to do
-      if (imgDataUrl.startsWith("data:")) {
-        if (!imgDataUrl.startsWith(header)) {
-          throw new Error("Only allowed PNG logo.");
+            callback({
+                ok: true,
+                incident: incidentBean.toPublicJSON(),
+            });
+        } catch (error) {
+            callback({
+                ok: false,
+                msg: error.message,
+            });
         }
+    });
 
-        const filename = `logo${statusPage.id}.png`;
+    socket.on("unpinIncident", async (slug, callback) => {
+        try {
+            checkLogin(socket);
 
-        // Convert to file
-        await ImageDataURI.outputFile(imgDataUrl,
-                                      Database.uploadDir + filename);
-        config.logo = `/upload/${filename}?t=` + Date.now();
+            let statusPageID = await StatusPage.slugToID(slug);
 
-      } else {
-        config.icon = imgDataUrl;
-      }
+            await R.exec(
+                "UPDATE incident SET pin = 0 WHERE pin = 1 AND status_page_id = ? ",
+                [statusPageID]
+            );
 
-      statusPage.slug = config.slug;
-      statusPage.title = config.title;
-      statusPage.description = config.description;
-      statusPage.icon = config.logo;
-      statusPage.theme = config.theme;
-      // statusPage.published = ;
-      // statusPage.search_engine_index = ;
-      statusPage.show_tags = config.showTags;
-      // statusPage.password = null;
-      statusPage.footer_text = config.footerText;
-      statusPage.custom_css = config.customCSS;
-      statusPage.show_powered_by = config.showPoweredBy;
-      statusPage.modified_date = R.isoDateTime();
-      statusPage.google_analytics_tag_id = config.googleAnalyticsId;
-
-      await R.store(statusPage);
-
-      await statusPage.updateDomainNameList(config.domainNameList);
-      await StatusPage.loadDomainMappingList();
-
-      // Save Public Group List
-      const groupIDList = [];
-      let groupOrder = 1;
-
-      for (let group of publicGroupList) {
-        let groupBean;
-        if (group.id) {
-          groupBean = await R.findOne(
-              "group", " id = ? AND public = 1 AND status_page_id = ? ",
-              [ group.id, statusPage.id ]);
-        } else {
-          groupBean = R.dispense("group");
+            callback({
+                ok: true,
+            });
+        } catch (error) {
+            callback({
+                ok: false,
+                msg: error.message,
+            });
         }
+    });
 
-        groupBean.status_page_id = statusPage.id;
-        groupBean.name = group.name;
-        groupBean.public = true;
-        groupBean.weight = groupOrder++;
+    socket.on("getStatusPage", async (slug, callback) => {
+        try {
+            checkLogin(socket);
 
-        await R.store(groupBean);
+            let statusPage = await R.findOne("status_page", " slug = ? ", [
+                slug,
+            ]);
 
-        await R.exec("DELETE FROM monitor_group WHERE group_id = ? ",
-                     [ groupBean.id ]);
+            if (!statusPage) {
+                throw new Error("No slug?");
+            }
 
-        let monitorOrder = 1;
-
-        for (let monitor of group.monitorList) {
-          let relationBean = R.dispense("monitor_group");
-          relationBean.weight = monitorOrder++;
-          relationBean.group_id = groupBean.id;
-          relationBean.monitor_id = monitor.id;
-
-          if (monitor.sendUrl !== undefined) {
-            relationBean.send_url = monitor.sendUrl;
-          }
-
-          await R.store(relationBean);
+            callback({
+                ok: true,
+                config: await statusPage.toJSON(),
+            });
+        } catch (error) {
+            callback({
+                ok: false,
+                msg: error.message,
+            });
         }
+    });
 
-        groupIDList.push(groupBean.id);
-        group.id = groupBean.id;
-      }
+    // Save Status Page
+    // imgDataUrl Only Accept PNG!
+    socket.on(
+        "saveStatusPage",
+        async (slug, config, imgDataUrl, publicGroupList, callback) => {
+            try {
+                checkLogin(socket);
 
-      // Delete groups that are not in the list
-      log.debug("socket", "Delete groups that are not in the list");
-      const slots = groupIDList.map(() => "?").join(",");
+                // Save Config
+                let statusPage = await R.findOne("status_page", " slug = ? ", [
+                    slug,
+                ]);
 
-      const data = [...groupIDList, statusPage.id ];
-      await R.exec(`DELETE FROM \`group\` WHERE id NOT IN (${
-                       slots}) AND status_page_id = ?`,
-                   data);
+                if (!statusPage) {
+                    throw new Error("No slug?");
+                }
 
-      const server = UptimeKumaServer.getInstance();
+                checkSlug(config.slug);
 
-      // Also change entry page to new slug if it is the default one, and slug
-      // is changed.
-      if (server.entryPage === "statusPage-" + slug &&
-          statusPage.slug !== slug) {
-        server.entryPage = "statusPage-" + statusPage.slug;
-        await setSetting("entryPage", server.entryPage, "general");
-      }
+                const header = "data:image/png;base64,";
 
-      apicache.clear();
+                // Check logo format
+                // If is image data url, convert to png file
+                // Else assume it is a url, nothing to do
+                if (imgDataUrl.startsWith("data:")) {
+                    if (!imgDataUrl.startsWith(header)) {
+                        throw new Error("Only allowed PNG logo.");
+                    }
 
-      callback({
-        ok : true,
-        publicGroupList,
-      });
+                    const filename = `logo${statusPage.id}.png`;
 
-    } catch (error) {
-      log.error("socket", error);
+                    // Convert to file
+                    await ImageDataURI.outputFile(
+                        imgDataUrl,
+                        Database.uploadDir + filename
+                    );
+                    config.logo = `/upload/${filename}?t=` + Date.now();
+                } else {
+                    config.icon = imgDataUrl;
+                }
 
-      callback({
-        ok : false,
-        msg : error.message,
-      });
-    }
-  });
+                statusPage.slug = config.slug;
+                statusPage.title = config.title;
+                statusPage.description = config.description;
+                statusPage.icon = config.logo;
+                statusPage.theme = config.theme;
+                // statusPage.published = ;
+                // statusPage.search_engine_index = ;
+                statusPage.show_tags = config.showTags;
+                // statusPage.password = null;
+                statusPage.footer_text = config.footerText;
+                statusPage.custom_css = config.customCSS;
+                statusPage.show_powered_by = config.showPoweredBy;
+                statusPage.modified_date = R.isoDateTime();
+                statusPage.google_analytics_tag_id = config.googleAnalyticsId;
 
-  // Add a new status page
-  socket.on("addStatusPage", async (title, slug, callback) => {
-    try {
-      checkLogin(socket);
+                await R.store(statusPage);
 
-      title = title?.trim();
-      slug = slug?.trim();
+                await statusPage.updateDomainNameList(config.domainNameList);
+                await StatusPage.loadDomainMappingList();
 
-      // Check empty
-      if (!title || !slug) {
-        throw new Error("Please input all fields");
-      }
+                // Save Public Group List
+                const groupIDList = [];
+                let groupOrder = 1;
 
-      // Make sure slug is string
-      if (typeof slug !== "string") {
-        throw new Error("Slug -Accept string only");
-      }
+                for (let group of publicGroupList) {
+                    let groupBean;
+                    if (group.id) {
+                        groupBean = await R.findOne(
+                            "group",
+                            " id = ? AND public = 1 AND status_page_id = ? ",
+                            [group.id, statusPage.id]
+                        );
+                    } else {
+                        groupBean = R.dispense("group");
+                    }
 
-      // lower case only
-      slug = slug.toLowerCase();
+                    groupBean.status_page_id = statusPage.id;
+                    groupBean.name = group.name;
+                    groupBean.public = true;
+                    groupBean.weight = groupOrder++;
 
-      checkSlug(slug);
+                    await R.store(groupBean);
 
-      let statusPage = R.dispense("status_page");
-      statusPage.slug = slug;
-      statusPage.title = title;
-      statusPage.theme = "auto";
-      statusPage.icon = "";
-      await R.store(statusPage);
+                    await R.exec(
+                        "DELETE FROM monitor_group WHERE group_id = ? ",
+                        [groupBean.id]
+                    );
 
-      callback({ok : true, msg : "OK!"});
+                    let monitorOrder = 1;
 
-    } catch (error) {
-      console.error(error);
-      callback({
-        ok : false,
-        msg : error.message,
-      });
-    }
-  });
+                    for (let monitor of group.monitorList) {
+                        let relationBean = R.dispense("monitor_group");
+                        relationBean.weight = monitorOrder++;
+                        relationBean.group_id = groupBean.id;
+                        relationBean.monitor_id = monitor.id;
 
-  // Delete a status page
-  socket.on("deleteStatusPage", async (slug, callback) => {
-    const server = UptimeKumaServer.getInstance();
+                        if (monitor.sendUrl !== undefined) {
+                            relationBean.send_url = monitor.sendUrl;
+                        }
 
-    try {
-      checkLogin(socket);
+                        await R.store(relationBean);
+                    }
 
-      let statusPageID = await StatusPage.slugToID(slug);
+                    groupIDList.push(groupBean.id);
+                    group.id = groupBean.id;
+                }
 
-      if (statusPageID) {
+                // Delete groups that are not in the list
+                log.debug("socket", "Delete groups that are not in the list");
+                const slots = groupIDList.map(() => "?").join(",");
 
-        // Reset entry page if it is the default one.
-        if (server.entryPage === "statusPage-" + slug) {
-          server.entryPage = "dashboard";
-          await setSetting("entryPage", server.entryPage, "general");
+                const data = [...groupIDList, statusPage.id];
+                await R.exec(
+                    `DELETE FROM \`group\` WHERE id NOT IN (${slots}) AND status_page_id = ?`,
+                    data
+                );
+
+                const server = UptimeKumaServer.getInstance();
+
+                // Also change entry page to new slug if it is the default one, and slug
+                // is changed.
+                if (
+                    server.entryPage === "statusPage-" + slug &&
+                    statusPage.slug !== slug
+                ) {
+                    server.entryPage = "statusPage-" + statusPage.slug;
+                    await setSetting("entryPage", server.entryPage, "general");
+                }
+
+                apicache.clear();
+
+                callback({
+                    ok: true,
+                    publicGroupList,
+                });
+            } catch (error) {
+                log.error("socket", error);
+
+                callback({
+                    ok: false,
+                    msg: error.message,
+                });
+            }
         }
+    );
 
-        // No need to delete records from `status_page_cname`, because it has
-        // cascade foreign key. But for incident & group, it is hard to add
-        // cascade foreign key during migration, so they have to be deleted
-        // manually.
+    // Add a new status page
+    socket.on("addStatusPage", async (title, slug, callback) => {
+        try {
+            checkLogin(socket);
 
-        // Delete incident
-        await R.exec("DELETE FROM incident WHERE status_page_id = ? ",
-                     [ statusPageID ]);
+            title = title?.trim();
+            slug = slug?.trim();
 
-        // Delete group
-        await R.exec("DELETE FROM `group` WHERE status_page_id = ? ",
-                     [ statusPageID ]);
+            // Check empty
+            if (!title || !slug) {
+                throw new Error("Please input all fields");
+            }
 
-        // Delete status_page
-        await R.exec("DELETE FROM status_page WHERE id = ? ", [ statusPageID ]);
+            // Make sure slug is string
+            if (typeof slug !== "string") {
+                throw new Error("Slug -Accept string only");
+            }
 
-      } else {
-        throw new Error("Status Page is not found");
-      }
+            // lower case only
+            slug = slug.toLowerCase();
 
-      callback({
-        ok : true,
-      });
-    } catch (error) {
-      callback({
-        ok : false,
-        msg : error.message,
-      });
-    }
-  });
+            checkSlug(slug);
+
+            let statusPage = R.dispense("status_page");
+            statusPage.slug = slug;
+            statusPage.title = title;
+            statusPage.theme = "auto";
+            statusPage.icon = "";
+            await R.store(statusPage);
+
+            callback({ ok: true, msg: "OK!" });
+        } catch (error) {
+            console.error(error);
+            callback({
+                ok: false,
+                msg: error.message,
+            });
+        }
+    });
+
+    // Delete a status page
+    socket.on("deleteStatusPage", async (slug, callback) => {
+        const server = UptimeKumaServer.getInstance();
+
+        try {
+            checkLogin(socket);
+
+            let statusPageID = await StatusPage.slugToID(slug);
+
+            if (statusPageID) {
+                // Reset entry page if it is the default one.
+                if (server.entryPage === "statusPage-" + slug) {
+                    server.entryPage = "dashboard";
+                    await setSetting("entryPage", server.entryPage, "general");
+                }
+
+                // No need to delete records from `status_page_cname`, because it has
+                // cascade foreign key. But for incident & group, it is hard to add
+                // cascade foreign key during migration, so they have to be deleted
+                // manually.
+
+                // Delete incident
+                await R.exec("DELETE FROM incident WHERE status_page_id = ? ", [
+                    statusPageID,
+                ]);
+
+                // Delete group
+                await R.exec("DELETE FROM `group` WHERE status_page_id = ? ", [
+                    statusPageID,
+                ]);
+
+                // Delete status_page
+                await R.exec("DELETE FROM status_page WHERE id = ? ", [
+                    statusPageID,
+                ]);
+            } else {
+                throw new Error("Status Page is not found");
+            }
+
+            callback({
+                ok: true,
+            });
+        } catch (error) {
+            callback({
+                ok: false,
+                msg: error.message,
+            });
+        }
+    });
 };
 
 /**
@@ -341,17 +360,17 @@ module.exports.statusPageSocketHandler = (socket) => {
  * @param {string} slug Slug to test
  */
 function checkSlug(slug) {
-  if (typeof slug !== "string") {
-    throw new Error("Slug must be string");
-  }
+    if (typeof slug !== "string") {
+        throw new Error("Slug must be string");
+    }
 
-  slug = slug.trim();
+    slug = slug.trim();
 
-  if (!slug) {
-    throw new Error("Slug cannot be empty");
-  }
+    if (!slug) {
+        throw new Error("Slug cannot be empty");
+    }
 
-  if (!slug.match(/^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/)) {
-    throw new Error("Invalid Slug");
-  }
+    if (!slug.match(/^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/)) {
+        throw new Error("Invalid Slug");
+    }
 }
