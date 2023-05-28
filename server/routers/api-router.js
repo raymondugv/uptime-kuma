@@ -1,16 +1,23 @@
 let express = require("express");
-const { allowDevAllOrigin, allowAllOrigin, percentageToColor, filterAndJoin, sendHttpError } = require("../util-server");
-const { R } = require("redbean-node");
+const {
+  allowDevAllOrigin,
+  allowAllOrigin,
+  percentageToColor,
+  filterAndJoin,
+  sendHttpError
+} = require("../util-server");
+const {R} = require("redbean-node");
 const apicache = require("../modules/apicache");
 const Monitor = require("../model/monitor");
 const dayjs = require("dayjs");
-const { UP, MAINTENANCE, DOWN, PENDING, flipStatus, log } = require("../../src/util");
+const {UP, MAINTENANCE, DOWN, PENDING, flipStatus, log} =
+    require("../../src/util");
 const StatusPage = require("../model/status_page");
-const { UptimeKumaServer } = require("../uptime-kuma-server");
-const { UptimeCacheList } = require("../uptime-cache-list");
-const { makeBadge } = require("badge-maker");
-const { badgeConstants } = require("../config");
-const { Prometheus } = require("../prometheus");
+const {UptimeKumaServer} = require("../uptime-kuma-server");
+const {UptimeCacheList} = require("../uptime-cache-list");
+const {makeBadge} = require("badge-maker");
+const {badgeConstants} = require("../config");
+const {Prometheus} = require("../prometheus");
 
 let router = express.Router();
 
@@ -19,99 +26,100 @@ const server = UptimeKumaServer.getInstance();
 let io = server.io;
 
 router.get("/api/entry-page", async (request, response) => {
-    allowDevAllOrigin(response);
+  allowDevAllOrigin(response);
 
-    let result = { };
+  let result = {};
 
-    if (request.hostname in StatusPage.domainMappingList) {
-        result.type = "statusPageMatchedDomain";
-        result.statusPageSlug = StatusPage.domainMappingList[request.hostname];
-    } else {
-        result.type = "entryPage";
-        result.entryPage = server.entryPage;
-    }
-    response.json(result);
+  if (request.hostname in StatusPage.domainMappingList) {
+    result.type = "statusPageMatchedDomain";
+    result.statusPageSlug = StatusPage.domainMappingList[request.hostname];
+  } else {
+    result.type = "entryPage";
+    result.entryPage = server.entryPage;
+  }
+  response.json(result);
 });
 
 router.get("/api/push/:pushToken", async (request, response) => {
-    try {
+  try {
 
-        let pushToken = request.params.pushToken;
-        let msg = request.query.msg || "OK";
-        let ping = parseInt(request.query.ping) || null;
-        let statusString = request.query.status || "up";
-        let status = (statusString === "up") ? UP : DOWN;
+    let pushToken = request.params.pushToken;
+    let msg = request.query.msg || "OK";
+    let ping = parseInt(request.query.ping) || null;
+    let statusString = request.query.status || "up";
+    let status = (statusString === "up") ? UP : DOWN;
 
-        let monitor = await R.findOne("monitor", " push_token = ? AND active = 1 ", [
-            pushToken
-        ]);
+    let monitor = await R.findOne("monitor", " push_token = ? AND active = 1 ",
+                                  [ pushToken ]);
 
-        if (! monitor) {
-            throw new Error("Monitor not found or not active.");
-        }
-
-        const previousHeartbeat = await Monitor.getPreviousHeartbeat(monitor.id);
-
-        if (monitor.isUpsideDown()) {
-            status = flipStatus(status);
-        }
-
-        let isFirstBeat = true;
-        let previousStatus = status;
-        let duration = 0;
-
-        let bean = R.dispense("heartbeat");
-        bean.time = R.isoDateTimeMillis(dayjs.utc());
-
-        if (previousHeartbeat) {
-            isFirstBeat = false;
-            previousStatus = previousHeartbeat.status;
-            duration = dayjs(bean.time).diff(dayjs(previousHeartbeat.time), "second");
-        }
-
-        if (await Monitor.isUnderMaintenance(monitor.id)) {
-            msg = "Monitor under maintenance";
-            status = MAINTENANCE;
-        }
-
-        log.debug("router", `/api/push/ called at ${dayjs().format("YYYY-MM-DD HH:mm:ss.SSS")}`);
-        log.debug("router", "PreviousStatus: " + previousStatus);
-        log.debug("router", "Current Status: " + status);
-
-        bean.important = Monitor.isImportantBeat(isFirstBeat, previousStatus, status);
-        bean.monitor_id = monitor.id;
-        bean.status = status;
-        bean.msg = msg;
-        bean.ping = ping;
-        bean.duration = duration;
-
-        await R.store(bean);
-
-        io.to(monitor.user_id).emit("heartbeat", bean.toJSON());
-        UptimeCacheList.clearCache(monitor.id);
-        Monitor.sendStats(io, monitor.id, monitor.user_id);
-        new Prometheus(monitor).update(bean, undefined);
-
-        response.json({
-            ok: true,
-        });
-
-        if (Monitor.isImportantForNotification(isFirstBeat, previousStatus, status)) {
-            await Monitor.sendNotification(isFirstBeat, monitor, bean);
-        }
-
-    } catch (e) {
-        response.status(404).json({
-            ok: false,
-            msg: e.message
-        });
+    if (!monitor) {
+      throw new Error("Monitor not found or not active.");
     }
+
+    const previousHeartbeat = await Monitor.getPreviousHeartbeat(monitor.id);
+
+    if (monitor.isUpsideDown()) {
+      status = flipStatus(status);
+    }
+
+    let isFirstBeat = true;
+    let previousStatus = status;
+    let duration = 0;
+
+    let bean = R.dispense("heartbeat");
+    bean.time = R.isoDateTimeMillis(dayjs.utc());
+
+    if (previousHeartbeat) {
+      isFirstBeat = false;
+      previousStatus = previousHeartbeat.status;
+      duration = dayjs(bean.time).diff(dayjs(previousHeartbeat.time), "second");
+    }
+
+    if (await Monitor.isUnderMaintenance(monitor.id)) {
+      msg = "Monitor under maintenance";
+      status = MAINTENANCE;
+    }
+
+    log.debug(
+        "router",
+        `/api/push/ called at ${dayjs().format("YYYY-MM-DD HH:mm:ss.SSS")}`);
+    log.debug("router", "PreviousStatus: " + previousStatus);
+    log.debug("router", "Current Status: " + status);
+
+    bean.important =
+        Monitor.isImportantBeat(isFirstBeat, previousStatus, status);
+    bean.monitor_id = monitor.id;
+    bean.status = status;
+    bean.msg = msg;
+    bean.ping = ping;
+    bean.duration = duration;
+
+    await R.store(bean);
+
+    io.to(monitor.user_id).emit("heartbeat", bean.toJSON());
+    UptimeCacheList.clearCache(monitor.id);
+    Monitor.sendStats(io, monitor.id, monitor.user_id);
+    new Prometheus(monitor).update(bean, undefined);
+
+    response.json({
+      ok : true,
+    });
+
+    if (Monitor.isImportantForNotification(isFirstBeat, previousStatus,
+                                           status)) {
+      await Monitor.sendNotification(isFirstBeat, monitor, bean);
+    }
+
+  } catch (e) {
+    response.status(404).json({ok : false, msg : e.message});
+  }
 });
 
-router.get("/api/badge/:id/status", cache("5 minutes"), async (request, response) => {
-    allowAllOrigin(response);
+router.get(
+    "/api/badge/:id/status", cache("5 minutes"), async (request, response) => {
+      allowAllOrigin(response);
 
-    const {
+      const {
         label,
         upLabel = "Up",
         downLabel = "Down",
@@ -123,9 +131,9 @@ router.get("/api/badge/:id/status", cache("5 minutes"), async (request, response
         maintenanceColor = badgeConstants.defaultMaintenanceColor,
         style = badgeConstants.defaultStyle,
         value, // for demo purpose only
-    } = request.query;
+      } = request.query;
 
-    try {
+      try {
         const requestedMonitorId = parseInt(request.params.id, 10);
         const overrideValue = value !== undefined ? parseInt(value) : undefined;
 
@@ -135,46 +143,48 @@ router.get("/api/badge/:id/status", cache("5 minutes"), async (request, response
                 AND monitor_group.monitor_id = ?
                 AND public = 1
             `,
-        [ requestedMonitorId ]
-        );
+                                           [ requestedMonitorId ]);
 
-        const badgeValues = { style };
+        const badgeValues = {style};
 
         if (!publicMonitor) {
-            // return a "N/A" badge in naColor (grey), if monitor is not public / not available / non exsitant
+          // return a "N/A" badge in naColor (grey), if monitor is not public /
+          // not available / non exsitant
 
-            badgeValues.message = "N/A";
-            badgeValues.color = badgeConstants.naColor;
+          badgeValues.message = "N/A";
+          badgeValues.color = badgeConstants.naColor;
         } else {
-            const heartbeat = await Monitor.getPreviousHeartbeat(requestedMonitorId);
-            const state = overrideValue !== undefined ? overrideValue : heartbeat.status;
+          const heartbeat =
+              await Monitor.getPreviousHeartbeat(requestedMonitorId);
+          const state =
+              overrideValue !== undefined ? overrideValue : heartbeat.status;
 
-            if (label === undefined) {
-                badgeValues.label = "Status";
-            } else {
-                badgeValues.label = label;
-            }
-            switch (state) {
-                case DOWN:
-                    badgeValues.color = downColor;
-                    badgeValues.message = downLabel;
-                    break;
-                case UP:
-                    badgeValues.color = upColor;
-                    badgeValues.message = upLabel;
-                    break;
-                case PENDING:
-                    badgeValues.color = pendingColor;
-                    badgeValues.message = pendingLabel;
-                    break;
-                case MAINTENANCE:
-                    badgeValues.color = maintenanceColor;
-                    badgeValues.message = maintenanceLabel;
-                    break;
-                default:
-                    badgeValues.color = badgeConstants.naColor;
-                    badgeValues.message = "N/A";
-            }
+          if (label === undefined) {
+            badgeValues.label = "Status";
+          } else {
+            badgeValues.label = label;
+          }
+          switch (state) {
+          case DOWN:
+            badgeValues.color = downColor;
+            badgeValues.message = downLabel;
+            break;
+          case UP:
+            badgeValues.color = upColor;
+            badgeValues.message = upLabel;
+            break;
+          case PENDING:
+            badgeValues.color = pendingColor;
+            badgeValues.message = pendingLabel;
+            break;
+          case MAINTENANCE:
+            badgeValues.color = maintenanceColor;
+            badgeValues.message = maintenanceLabel;
+            break;
+          default:
+            badgeValues.color = badgeConstants.naColor;
+            badgeValues.message = "N/A";
+          }
         }
 
         // build the svg based on given values
@@ -182,15 +192,17 @@ router.get("/api/badge/:id/status", cache("5 minutes"), async (request, response
 
         response.type("image/svg+xml");
         response.send(svg);
-    } catch (error) {
+      } catch (error) {
         sendHttpError(response, error.message);
-    }
-});
+      }
+    });
 
-router.get("/api/badge/:id/uptime/:duration?", cache("5 minutes"), async (request, response) => {
-    allowAllOrigin(response);
+router.get(
+    "/api/badge/:id/uptime/:duration?", cache("5 minutes"),
+    async (request, response) => {
+      allowAllOrigin(response);
 
-    const {
+      const {
         label,
         labelPrefix,
         labelSuffix = badgeConstants.defaultUptimeLabelSuffix,
@@ -200,12 +212,14 @@ router.get("/api/badge/:id/uptime/:duration?", cache("5 minutes"), async (reques
         labelColor,
         style = badgeConstants.defaultStyle,
         value, // for demo purpose only
-    } = request.query;
+      } = request.query;
 
-    try {
+      try {
         const requestedMonitorId = parseInt(request.params.id, 10);
         // if no duration is given, set value to 24 (h)
-        const requestedDuration = request.params.duration !== undefined ? parseInt(request.params.duration, 10) : 24;
+        const requestedDuration = request.params.duration !== undefined
+                                      ? parseInt(request.params.duration, 10)
+                                      : 24;
         const overrideValue = value && parseFloat(value);
 
         let publicMonitor = await R.getRow(`
@@ -214,34 +228,37 @@ router.get("/api/badge/:id/uptime/:duration?", cache("5 minutes"), async (reques
                 AND monitor_group.monitor_id = ?
                 AND public = 1
             `,
-        [ requestedMonitorId ]
-        );
+                                           [ requestedMonitorId ]);
 
-        const badgeValues = { style };
+        const badgeValues = {style};
 
         if (!publicMonitor) {
-            // return a "N/A" badge in naColor (grey), if monitor is not public / not available / non existent
-            badgeValues.message = "N/A";
-            badgeValues.color = badgeConstants.naColor;
+          // return a "N/A" badge in naColor (grey), if monitor is not public /
+          // not available / non existent
+          badgeValues.message = "N/A";
+          badgeValues.color = badgeConstants.naColor;
         } else {
-            const uptime = overrideValue ?? await Monitor.calcUptime(
-                requestedDuration,
-                requestedMonitorId
-            );
+          const uptime =
+              overrideValue ??
+              await Monitor.calcUptime(requestedDuration, requestedMonitorId);
 
-            // limit the displayed uptime percentage to four (two, when displayed as percent) decimal digits
-            const cleanUptime = (uptime * 100).toPrecision(4);
+          // limit the displayed uptime percentage to four (two, when displayed
+          // as percent) decimal digits
+          const cleanUptime = (uptime * 100).toPrecision(4);
 
-            // use a given, custom color or calculate one based on the uptime value
-            badgeValues.color = color ?? percentageToColor(uptime);
-            // use a given, custom labelColor or use the default badge label color (defined by badge-maker)
-            badgeValues.labelColor = labelColor ?? "";
-            // build a label string. If a custom label is given, override the default one (requestedDuration)
-            badgeValues.label = filterAndJoin([
-                labelPrefix,
-                label ?? `Uptime (${requestedDuration}${labelSuffix})`,
-            ]);
-            badgeValues.message = filterAndJoin([ prefix, cleanUptime, suffix ]);
+          // use a given, custom color or calculate one based on the uptime
+          // value
+          badgeValues.color = color ?? percentageToColor(uptime);
+          // use a given, custom labelColor or use the default badge label color
+          // (defined by badge-maker)
+          badgeValues.labelColor = labelColor ?? "";
+          // build a label string. If a custom label is given, override the
+          // default one (requestedDuration)
+          badgeValues.label = filterAndJoin([
+            labelPrefix,
+            label ?? `Uptime (${requestedDuration}${labelSuffix})`,
+          ]);
+          badgeValues.message = filterAndJoin([ prefix, cleanUptime, suffix ]);
         }
 
         // build the SVG based on given values
@@ -249,15 +266,17 @@ router.get("/api/badge/:id/uptime/:duration?", cache("5 minutes"), async (reques
 
         response.type("image/svg+xml");
         response.send(svg);
-    } catch (error) {
+      } catch (error) {
         sendHttpError(response, error.message);
-    }
-});
+      }
+    });
 
-router.get("/api/badge/:id/ping/:duration?", cache("5 minutes"), async (request, response) => {
-    allowAllOrigin(response);
+router.get(
+    "/api/badge/:id/ping/:duration?", cache("5 minutes"),
+    async (request, response) => {
+      allowAllOrigin(response);
 
-    const {
+      const {
         label,
         labelPrefix,
         labelSuffix = badgeConstants.defaultPingLabelSuffix,
@@ -267,16 +286,21 @@ router.get("/api/badge/:id/ping/:duration?", cache("5 minutes"), async (request,
         labelColor,
         style = badgeConstants.defaultStyle,
         value, // for demo purpose only
-    } = request.query;
+      } = request.query;
 
-    try {
+      try {
         const requestedMonitorId = parseInt(request.params.id, 10);
 
-        // Default duration is 24 (h) if not defined in queryParam, limited to 720h (30d)
-        const requestedDuration = Math.min(request.params.duration ? parseInt(request.params.duration, 10) : 24, 720);
+        // Default duration is 24 (h) if not defined in queryParam, limited to
+        // 720h (30d)
+        const requestedDuration = Math.min(
+            request.params.duration ? parseInt(request.params.duration, 10)
+                                    : 24,
+            720);
         const overrideValue = value && parseFloat(value);
 
-        const publicAvgPing = parseInt(await R.getCell(`
+        const publicAvgPing = parseInt(
+            await R.getCell(`
                 SELECT AVG(ping) FROM monitor_group, \`group\`, heartbeat
                 WHERE monitor_group.group_id = \`group\`.id
                 AND heartbeat.time > DATETIME('now', ? || ' hours')
@@ -284,25 +308,30 @@ router.get("/api/badge/:id/ping/:duration?", cache("5 minutes"), async (request,
                 AND public = 1
                 AND heartbeat.monitor_id = ?
             `,
-        [ -requestedDuration, requestedMonitorId ]
-        ));
+                            [ -requestedDuration, requestedMonitorId ]));
 
-        const badgeValues = { style };
+        const badgeValues = {style};
 
         if (!publicAvgPing) {
-            // return a "N/A" badge in naColor (grey), if monitor is not public / not available / non exsitant
+          // return a "N/A" badge in naColor (grey), if monitor is not public /
+          // not available / non exsitant
 
-            badgeValues.message = "N/A";
-            badgeValues.color = badgeConstants.naColor;
+          badgeValues.message = "N/A";
+          badgeValues.color = badgeConstants.naColor;
         } else {
-            const avgPing = parseInt(overrideValue ?? publicAvgPing);
+          const avgPing = parseInt(overrideValue ?? publicAvgPing);
 
-            badgeValues.color = color;
-            // use a given, custom labelColor or use the default badge label color (defined by badge-maker)
-            badgeValues.labelColor = labelColor ?? "";
-            // build a lable string. If a custom label is given, override the default one (requestedDuration)
-            badgeValues.label = filterAndJoin([ labelPrefix, label ?? `Avg. Ping (${requestedDuration}${labelSuffix})` ]);
-            badgeValues.message = filterAndJoin([ prefix, avgPing, suffix ]);
+          badgeValues.color = color;
+          // use a given, custom labelColor or use the default badge label color
+          // (defined by badge-maker)
+          badgeValues.labelColor = labelColor ?? "";
+          // build a lable string. If a custom label is given, override the
+          // default one (requestedDuration)
+          badgeValues.label = filterAndJoin([
+            labelPrefix,
+            label ?? `Avg. Ping (${requestedDuration}${labelSuffix})`
+          ]);
+          badgeValues.message = filterAndJoin([ prefix, avgPing, suffix ]);
         }
 
         // build the SVG based on given values
@@ -310,15 +339,17 @@ router.get("/api/badge/:id/ping/:duration?", cache("5 minutes"), async (request,
 
         response.type("image/svg+xml");
         response.send(svg);
-    } catch (error) {
+      } catch (error) {
         sendHttpError(response, error.message);
-    }
-});
+      }
+    });
 
-router.get("/api/badge/:id/avg-response/:duration?", cache("5 minutes"), async (request, response) => {
-    allowAllOrigin(response);
+router.get(
+    "/api/badge/:id/avg-response/:duration?", cache("5 minutes"),
+    async (request, response) => {
+      allowAllOrigin(response);
 
-    const {
+      const {
         label,
         labelPrefix,
         labelSuffix,
@@ -328,21 +359,21 @@ router.get("/api/badge/:id/avg-response/:duration?", cache("5 minutes"), async (
         labelColor,
         style = badgeConstants.defaultStyle,
         value, // for demo purpose only
-    } = request.query;
+      } = request.query;
 
-    try {
+      try {
         const requestedMonitorId = parseInt(request.params.id, 10);
 
-        // Default duration is 24 (h) if not defined in queryParam, limited to 720h (30d)
+        // Default duration is 24 (h) if not defined in queryParam, limited to
+        // 720h (30d)
         const requestedDuration = Math.min(
-            request.params.duration
-                ? parseInt(request.params.duration, 10)
-                : 24,
-            720
-        );
+            request.params.duration ? parseInt(request.params.duration, 10)
+                                    : 24,
+            720);
         const overrideValue = value && parseFloat(value);
 
-        const publicAvgPing = parseInt(await R.getCell(`
+        const publicAvgPing = parseInt(
+            await R.getCell(`
             SELECT AVG(ping) FROM monitor_group, \`group\`, heartbeat
             WHERE monitor_group.group_id = \`group\`.id
             AND heartbeat.time > DATETIME('now', ? || ' hours')
@@ -350,29 +381,31 @@ router.get("/api/badge/:id/avg-response/:duration?", cache("5 minutes"), async (
             AND public = 1
             AND heartbeat.monitor_id = ?
             `,
-        [ -requestedDuration, requestedMonitorId ]
-        ));
+                            [ -requestedDuration, requestedMonitorId ]));
 
-        const badgeValues = { style };
+        const badgeValues = {style};
 
         if (!publicAvgPing) {
-            // return a "N/A" badge in naColor (grey), if monitor is not public / not available / non existent
+          // return a "N/A" badge in naColor (grey), if monitor is not public /
+          // not available / non existent
 
-            badgeValues.message = "N/A";
-            badgeValues.color = badgeConstants.naColor;
+          badgeValues.message = "N/A";
+          badgeValues.color = badgeConstants.naColor;
         } else {
-            const avgPing = parseInt(overrideValue ?? publicAvgPing);
+          const avgPing = parseInt(overrideValue ?? publicAvgPing);
 
-            badgeValues.color = color;
-            // use a given, custom labelColor or use the default badge label color (defined by badge-maker)
-            badgeValues.labelColor = labelColor ?? "";
-            // build a label string. If a custom label is given, override the default one (requestedDuration)
-            badgeValues.label = filterAndJoin([
-                labelPrefix,
-                label ?? `Avg. Response (${requestedDuration}h)`,
-                labelSuffix,
-            ]);
-            badgeValues.message = filterAndJoin([ prefix, avgPing, suffix ]);
+          badgeValues.color = color;
+          // use a given, custom labelColor or use the default badge label color
+          // (defined by badge-maker)
+          badgeValues.labelColor = labelColor ?? "";
+          // build a label string. If a custom label is given, override the
+          // default one (requestedDuration)
+          badgeValues.label = filterAndJoin([
+            labelPrefix,
+            label ?? `Avg. Response (${requestedDuration}h)`,
+            labelSuffix,
+          ]);
+          badgeValues.message = filterAndJoin([ prefix, avgPing, suffix ]);
         }
 
         // build the SVG based on given values
@@ -380,17 +413,19 @@ router.get("/api/badge/:id/avg-response/:duration?", cache("5 minutes"), async (
 
         response.type("image/svg+xml");
         response.send(svg);
-    } catch (error) {
+      } catch (error) {
         sendHttpError(response, error.message);
-    }
-});
+      }
+    });
 
-router.get("/api/badge/:id/cert-exp", cache("5 minutes"), async (request, response) => {
-    allowAllOrigin(response);
+router.get(
+    "/api/badge/:id/cert-exp", cache("5 minutes"),
+    async (request, response) => {
+      allowAllOrigin(response);
 
-    const date = request.query.date;
+      const date = request.query.date;
 
-    const {
+      const {
         label,
         labelPrefix,
         labelSuffix,
@@ -404,9 +439,9 @@ router.get("/api/badge/:id/cert-exp", cache("5 minutes"), async (request, respon
         labelColor,
         style = badgeConstants.defaultStyle,
         value, // for demo purpose only
-    } = request.query;
+      } = request.query;
 
-    try {
+      try {
         const requestedMonitorId = parseInt(request.params.id, 10);
 
         const overrideValue = value && parseFloat(value);
@@ -417,53 +452,61 @@ router.get("/api/badge/:id/cert-exp", cache("5 minutes"), async (request, respon
             AND monitor_group.monitor_id = ?
             AND public = 1
             `,
-        [ requestedMonitorId ]
-        );
+                                           [ requestedMonitorId ]);
 
-        const badgeValues = { style };
+        const badgeValues = {style};
 
         if (!publicMonitor) {
-            // return a "N/A" badge in naColor (grey), if monitor is not public / not available / non existent
+          // return a "N/A" badge in naColor (grey), if monitor is not public /
+          // not available / non existent
 
-            badgeValues.message = "N/A";
-            badgeValues.color = badgeConstants.naColor;
+          badgeValues.message = "N/A";
+          badgeValues.color = badgeConstants.naColor;
         } else {
-            const tlsInfoBean = await R.findOne("monitor_tls_info", "monitor_id = ?", [
+          const tlsInfoBean =
+              await R.findOne("monitor_tls_info", "monitor_id = ?", [
                 requestedMonitorId,
-            ]);
+              ]);
 
-            if (!tlsInfoBean) {
-                // return a "No/Bad Cert" badge in naColor (grey), if no cert saved (does not save bad certs?)
-                badgeValues.message = "No/Bad Cert";
-                badgeValues.color = badgeConstants.naColor;
+          if (!tlsInfoBean) {
+            // return a "No/Bad Cert" badge in naColor (grey), if no cert saved
+            // (does not save bad certs?)
+            badgeValues.message = "No/Bad Cert";
+            badgeValues.color = badgeConstants.naColor;
+          } else {
+            const tlsInfo = JSON.parse(tlsInfoBean.info_json);
+
+            if (!tlsInfo.valid) {
+              // return a "Bad Cert" badge in naColor (grey), when cert is not
+              // valid
+              badgeValues.message = "Bad Cert";
+              badgeValues.color = badgeConstants.downColor;
             } else {
-                const tlsInfo = JSON.parse(tlsInfoBean.info_json);
+              const daysRemaining =
+                  parseInt(overrideValue ?? tlsInfo.certInfo.daysRemaining);
 
-                if (!tlsInfo.valid) {
-                    // return a "Bad Cert" badge in naColor (grey), when cert is not valid
-                    badgeValues.message = "Bad Cert";
-                    badgeValues.color = badgeConstants.downColor;
-                } else {
-                    const daysRemaining = parseInt(overrideValue ?? tlsInfo.certInfo.daysRemaining);
-
-                    if (daysRemaining > warnDays) {
-                        badgeValues.color = upColor;
-                    } else if (daysRemaining > downDays) {
-                        badgeValues.color = warnColor;
-                    } else {
-                        badgeValues.color = downColor;
-                    }
-                    // use a given, custom labelColor or use the default badge label color (defined by badge-maker)
-                    badgeValues.labelColor = labelColor ?? "";
-                    // build a label string. If a custom label is given, override the default one
-                    badgeValues.label = filterAndJoin([
-                        labelPrefix,
-                        label ?? "Cert Exp.",
-                        labelSuffix,
-                    ]);
-                    badgeValues.message = filterAndJoin([ prefix, date ? tlsInfo.certInfo.validTo : daysRemaining, suffix ]);
-                }
+              if (daysRemaining > warnDays) {
+                badgeValues.color = upColor;
+              } else if (daysRemaining > downDays) {
+                badgeValues.color = warnColor;
+              } else {
+                badgeValues.color = downColor;
+              }
+              // use a given, custom labelColor or use the default badge label
+              // color (defined by badge-maker)
+              badgeValues.labelColor = labelColor ?? "";
+              // build a label string. If a custom label is given, override the
+              // default one
+              badgeValues.label = filterAndJoin([
+                labelPrefix,
+                label ?? "Cert Exp.",
+                labelSuffix,
+              ]);
+              badgeValues.message = filterAndJoin([
+                prefix, date ? tlsInfo.certInfo.validTo : daysRemaining, suffix
+              ]);
             }
+          }
         }
 
         // build the SVG based on given values
@@ -471,15 +514,17 @@ router.get("/api/badge/:id/cert-exp", cache("5 minutes"), async (request, respon
 
         response.type("image/svg+xml");
         response.send(svg);
-    } catch (error) {
+      } catch (error) {
         sendHttpError(response, error.message);
-    }
-});
+      }
+    });
 
-router.get("/api/badge/:id/response", cache("5 minutes"), async (request, response) => {
-    allowAllOrigin(response);
+router.get(
+    "/api/badge/:id/response", cache("5 minutes"),
+    async (request, response) => {
+      allowAllOrigin(response);
 
-    const {
+      const {
         label,
         labelPrefix,
         labelSuffix,
@@ -489,9 +534,9 @@ router.get("/api/badge/:id/response", cache("5 minutes"), async (request, respon
         labelColor,
         style = badgeConstants.defaultStyle,
         value, // for demo purpose only
-    } = request.query;
+      } = request.query;
 
-    try {
+      try {
         const requestedMonitorId = parseInt(request.params.id, 10);
 
         const overrideValue = value && parseFloat(value);
@@ -502,40 +547,42 @@ router.get("/api/badge/:id/response", cache("5 minutes"), async (request, respon
             AND monitor_group.monitor_id = ?
             AND public = 1
             `,
-        [ requestedMonitorId ]
-        );
+                                           [ requestedMonitorId ]);
 
-        const badgeValues = { style };
+        const badgeValues = {style};
 
         if (!publicMonitor) {
-            // return a "N/A" badge in naColor (grey), if monitor is not public / not available / non existent
+          // return a "N/A" badge in naColor (grey), if monitor is not public /
+          // not available / non existent
+
+          badgeValues.message = "N/A";
+          badgeValues.color = badgeConstants.naColor;
+        } else {
+          const heartbeat =
+              await Monitor.getPreviousHeartbeat(requestedMonitorId);
+
+          if (!heartbeat.ping) {
+            // return a "N/A" badge in naColor (grey), if previous heartbeat has
+            // no ping
 
             badgeValues.message = "N/A";
             badgeValues.color = badgeConstants.naColor;
-        } else {
-            const heartbeat = await Monitor.getPreviousHeartbeat(
-                requestedMonitorId
-            );
+          } else {
+            const ping = parseInt(overrideValue ?? heartbeat.ping);
 
-            if (!heartbeat.ping) {
-                // return a "N/A" badge in naColor (grey), if previous heartbeat has no ping
-
-                badgeValues.message = "N/A";
-                badgeValues.color = badgeConstants.naColor;
-            } else {
-                const ping = parseInt(overrideValue ?? heartbeat.ping);
-
-                badgeValues.color = color;
-                // use a given, custom labelColor or use the default badge label color (defined by badge-maker)
-                badgeValues.labelColor = labelColor ?? "";
-                // build a label string. If a custom label is given, override the default one
-                badgeValues.label = filterAndJoin([
-                    labelPrefix,
-                    label ?? "Response",
-                    labelSuffix,
-                ]);
-                badgeValues.message = filterAndJoin([ prefix, ping, suffix ]);
-            }
+            badgeValues.color = color;
+            // use a given, custom labelColor or use the default badge label
+            // color (defined by badge-maker)
+            badgeValues.labelColor = labelColor ?? "";
+            // build a label string. If a custom label is given, override the
+            // default one
+            badgeValues.label = filterAndJoin([
+              labelPrefix,
+              label ?? "Response",
+              labelSuffix,
+            ]);
+            badgeValues.message = filterAndJoin([ prefix, ping, suffix ]);
+          }
         }
 
         // build the SVG based on given values
@@ -543,9 +590,9 @@ router.get("/api/badge/:id/response", cache("5 minutes"), async (request, respon
 
         response.type("image/svg+xml");
         response.send(svg);
-    } catch (error) {
+      } catch (error) {
         sendHttpError(response, error.message);
-    }
-});
+      }
+    });
 
 module.exports = router;
