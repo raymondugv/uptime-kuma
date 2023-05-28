@@ -23,6 +23,7 @@ const Mattermost = require("./notification-providers/mattermost");
 const Ntfy = require("./notification-providers/ntfy");
 const Octopush = require("./notification-providers/octopush");
 const OneBot = require("./notification-providers/onebot");
+const Opsgenie = require("./notification-providers/opsgenie");
 const PagerDuty = require("./notification-providers/pagerduty");
 const PagerTree = require("./notification-providers/pagertree");
 const PromoSMS = require("./notification-providers/promosms");
@@ -41,6 +42,7 @@ const Stackfield = require("./notification-providers/stackfield");
 const Teams = require("./notification-providers/teams");
 const TechulusPush = require("./notification-providers/techulus-push");
 const Telegram = require("./notification-providers/telegram");
+const Twilio = require("./notification-providers/twilio");
 const Splunk = require("./notification-providers/splunk");
 const Webhook = require("./notification-providers/webhook");
 const WeCom = require("./notification-providers/wecom");
@@ -50,7 +52,6 @@ const ServerChan = require("./notification-providers/serverchan");
 const ZohoCliq = require("./notification-providers/zoho-cliq");
 
 class Notification {
-
     providerList = {};
 
     /** Initialize the notification providers */
@@ -83,6 +84,7 @@ class Notification {
             new Ntfy(),
             new Octopush(),
             new OneBot(),
+            new Opsgenie(),
             new PagerDuty(),
             new PagerTree(),
             new PromoSMS(),
@@ -103,15 +105,16 @@ class Notification {
             new Teams(),
             new TechulusPush(),
             new Telegram(),
+            new Twilio(),
             new Splunk(),
             new Webhook(),
             new WeCom(),
             new GoAlert(),
-            new ZohoCliq()
+            new ZohoCliq(),
         ];
 
         for (let item of list) {
-            if (! item.name) {
+            if (!item.name) {
                 throw new Error("Notification provider without name");
             }
 
@@ -131,9 +134,19 @@ class Notification {
      * @returns {Promise<string>} Successful msg
      * @throws Error with fail msg
      */
-    static async send(notification, msg, monitorJSON = null, heartbeatJSON = null) {
+    static async send(
+        notification,
+        msg,
+        monitorJSON = null,
+        heartbeatJSON = null
+    ) {
         if (this.providerList[notification.type]) {
-            return this.providerList[notification.type].send(notification, msg, monitorJSON, heartbeatJSON);
+            return this.providerList[notification.type].send(
+                notification,
+                msg,
+                monitorJSON,
+                heartbeatJSON
+            );
         } else {
             throw new Error("Notification type is not supported");
         }
@@ -155,10 +168,9 @@ class Notification {
                 userID,
             ]);
 
-            if (! bean) {
+            if (!bean) {
                 throw new Error("notification not found");
             }
-
         } else {
             bean = R.dispense("notification");
         }
@@ -188,7 +200,7 @@ class Notification {
             userID,
         ]);
 
-        if (! bean) {
+        if (!bean) {
             throw new Error("notification not found");
         }
 
@@ -204,7 +216,6 @@ class Notification {
         let exists = commandExistsSync("apprise");
         return exists;
     }
-
 }
 
 /**
@@ -215,16 +226,17 @@ class Notification {
  */
 async function applyNotificationEveryMonitor(notificationID, userID) {
     let monitors = await R.getAll("SELECT id FROM monitor WHERE user_id = ?", [
-        userID
+        userID,
     ]);
 
     for (let i = 0; i < monitors.length; i++) {
-        let checkNotification = await R.findOne("monitor_notification", " monitor_id = ? AND notification_id = ? ", [
-            monitors[i].id,
-            notificationID,
-        ]);
+        let checkNotification = await R.findOne(
+            "monitor_notification",
+            " monitor_id = ? AND notification_id = ? ",
+            [monitors[i].id, notificationID]
+        );
 
-        if (! checkNotification) {
+        if (!checkNotification) {
             let relation = R.dispense("monitor_notification");
             relation.monitor_id = monitors[i].id;
             relation.notification_id = notificationID;

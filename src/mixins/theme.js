@@ -1,8 +1,9 @@
 export default {
-
     data() {
         return {
-            system: (window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light",
+            system: window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light",
             userTheme: localStorage.theme,
             userHeartbeatBar: localStorage.heartbeatBarTheme,
             statusPageTheme: "light",
@@ -13,7 +14,7 @@ export default {
 
     mounted() {
         // Default Light
-        if (! this.userTheme) {
+        if (!this.userTheme) {
             this.userTheme = "auto";
         }
 
@@ -28,7 +29,8 @@ export default {
 
     computed: {
         theme() {
-            // As entry can be status page now, set forceStatusPageTheme to true to use status page theme
+            // As entry can be status page now, set forceStatusPageTheme to true to
+            // use status page theme
             if (this.forceStatusPageTheme) {
                 return this.statusPageTheme;
             }
@@ -38,7 +40,13 @@ export default {
                 return "light";
             }
 
-            if (this.path.startsWith("/status-page") || this.path.startsWith("/status")) {
+            if (
+                this.path.startsWith("/status-page") ||
+                this.path.startsWith("/status")
+            ) {
+                if (this.statusPageTheme === "auto") {
+                    return this.system;
+                }
                 return this.statusPageTheme;
             } else {
                 if (this.userTheme === "auto") {
@@ -50,7 +58,7 @@ export default {
 
         isDark() {
             return this.theme === "dark";
-        }
+        },
     },
 
     watch: {
@@ -75,18 +83,21 @@ export default {
         heartbeatBarTheme(to, from) {
             document.body.classList.remove(from);
             document.body.classList.add(this.heartbeatBarTheme);
-        }
+        },
     },
 
     methods: {
         /** Update the theme color meta tag */
         updateThemeColorMeta() {
             if (this.theme === "dark") {
-                document.querySelector("#theme-color").setAttribute("content", "#161B22");
+                document
+                    .querySelector("#theme-color")
+                    .setAttribute("content", "#161B22");
             } else {
-                document.querySelector("#theme-color").setAttribute("content", "#5cdd8b");
+                document
+                    .querySelector("#theme-color")
+                    .setAttribute("content", "#5cdd8b");
             }
-        }
-    }
+        },
+    },
 };
-

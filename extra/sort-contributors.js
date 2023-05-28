@@ -10,10 +10,13 @@ let lines = file.split("\n");
 lines = lines.filter((line) => line !== "");
 
 // Remove duplicates
-lines = [ ...new Set(lines) ];
+lines = [...new Set(lines)];
 
 // Remove @weblate and @UptimeKumaBot
-lines = lines.filter((line) => line !== "@weblate" && line !== "@UptimeKumaBot");
+lines = lines.filter(
+    (line) =>
+        line !== "@weblate" && line !== "@UptimeKumaBot" && line !== "@louislam"
+);
 
 // Sort the lines
 lines = lines.sort();
