@@ -7,3 +7,4 @@ ALTER TABLE monitor
 ALTER TABLE monitor
     ADD tls_key TEXT DEFAULT NULL;
 COMMIT;
+
